@@ -14,10 +14,6 @@
 
   <!-- LOGIN -->
   <div id="loginScreen" class="max-w-sm mx-auto p-6 bg-white rounded-2xl shadow-lg">
-    <!-- Texto grande PBIP APP en el login -->
-    <div class="text-center mb-4">
-      <div class="text-3xl font-extrabold text-gray-800">PBIP <span class="text-indigo-600">APP</span></div>
-    </div>
     <h2 class="text-2xl font-bold text-center mb-4">Login</h2>
     <input id="username" placeholder="Usuario" class="w-full p-2 border rounded mb-2" />
     <input id="password" type="password" placeholder="Contraseña" class="w-full p-2 border rounded mb-4" />
@@ -52,7 +48,6 @@
         <button id="navWorkers" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Trabajadores</button>
         <button id="navCompanies" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Empresas</button>
         <button id="navReport" type="button" class="px-4 py-2 bg-gray-200 rounded">Reporte Ingresos</button>
-        <button id="navVehicles" type="button" class="px-4 py-2 bg-gray-200 rounded">Vehículos</button>
         <button id="navConsulta" type="button" class="px-4 py-2 bg-gray-200 rounded">Consulta de ingreso</button>
       </div>
       <button id="logoutBtn" class="ml-auto px-4 py-2 bg-red-500 text-white rounded">Cerrar sesión</button>
@@ -91,58 +86,11 @@
           <option value="">Seleccione...</option>
           <option value="monotributista">Monotributista</option>
           <option value="dependencia">Relación de Dependencia</option>
-          <option value="se_visita">Se visita</option>
         </select>
       </div>
 
-     <!-- Responsable de la visita (solo para tipo: Se visita) -->
-     <div id="visitRespWrapperForm" class="mt-4 hidden">
-       <label class="block mb-1">Responsable de la visita</label>
-       <input id="respVisitaForm" class="w-full p-2 border rounded" />
-     </div>
-
       <!-- Documents slots -->
       <div id="documentsSection" class="mt-4 space-y-3"></div>
-
-      <!-- VEHÍCULO (módulo dentro del ingreso extraordinario) -->
-      <div id="vehicleSection" class="mt-4 p-4 border rounded bg-gray-50">
-        <div class="flex items-center justify-between mb-2">
-          <div class="font-semibold">Datos del vehículo</div>
-          <div class="text-sm text-gray-600">Opcional</div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label class="block mb-1">Dominio</label>
-            <input id="vehDominio" class="w-full p-2 border rounded" />
-          </div>
-          <div>
-            <label class="block mb-1">Marca</label>
-            <input id="vehMarca" class="w-full p-2 border rounded" />
-          </div>
-          <div>
-            <label class="block mb-1">Modelo</label>
-            <input id="vehModelo" class="w-full p-2 border rounded" />
-          </div>
-          <div class="md:col-span-3">
-            <label class="block mb-1">Titular</label>
-            <input id="vehTitular" class="w-full p-2 border rounded" />
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="block mb-1">Registrado en el Site (PPA‑VGG)</label>
-            <select id="vehPPA" class="p-1 border rounded">
-              <option value="">Seleccione...</option>
-              <option value="PPA">PPA</option>
-              <option value="VGG">VGG</option>
-            </select>
-          </div>
-          <div>
-            <label class="block mb-1">Póliza (PDF)</label>
-            <input type="file" accept="application/pdf" id="vehPolicyFile" class="hidden" />
-            <button id="vehPolicyBtn" class="uploadBtn px-3 py-1 bg-blue-600 text-white rounded">Elegir Póliza</button>
-            <input id="vehPolicyExpiry" type="date" class="p-1 border rounded ml-2" />
-          </div>
-        </div>
-      </div>
 
       <!-- Acciones del formulario -->
       <div class="mt-4 flex gap-2">
@@ -230,26 +178,6 @@
           <!-- filas generadas por JS -->
         </table>
       </div>
-
-     <!-- Panel de Vehículos del reporte -->
-     <div id="reportVehiclesPanel" class="mt-4 p-4 border rounded bg-gray-50 hidden">
-       <!-- contenido generado por JS -->
-     </div>
-    </section>
-
-    <!-- VEHICLES SCREEN -->
-    <section id="vehiclesScreen" class="hidden bg-white p-6 rounded shadow">
-      <h3 class="text-xl font-bold mb-4">Listado de Vehículos</h3>
-      <div class="flex gap-2 mb-4">
-        <input id="vehFilterDominio" placeholder="Filtrar por Dominio" class="p-2 border rounded" />
-        <input id="vehFilterTitular" placeholder="Filtrar por Titular" class="p-2 border rounded flex-1" />
-        <button id="refreshVehicles" class="bg-blue-600 text-white px-3 py-1 rounded">Refrescar</button>
-      </div>
-      <div class="overflow-auto">
-        <table class="w-full" id="vehiclesTable">
-          <!-- filas generadas por JS -->
-        </table>
-      </div>
     </section>
 
     <!-- after NAV (insert console) -->
@@ -320,17 +248,10 @@
       return bytes;
     }
 
-    // utilidad: formato fecha y hora legible desde ISO (evita error fmtDateTime not defined)
-    function fmtDateTime(iso) {
-      if (!iso) return "";
-      try { return new Date(iso).toLocaleString(); } catch (e) { return iso || ""; }
-    }
-    
     // ---------- Datos y documentos por defecto ----------
     const docsBase = [
       { key: "DNI", label: "DNI" },
       { key: "EPP", label: "Entrega de EPP" },
-      { key: "MAIL_AGENCIA", label: "Mail aviso de la agencia" },
       { key: "CARNET_PREFECTURA", label: "Carnet de Prefectura" }
     ];
     const docsMono = [
@@ -363,17 +284,8 @@
     const navWorkers = document.getElementById("navWorkers");
     const navCompanies = document.getElementById("navCompanies");
     const navReport = document.getElementById("navReport");
-    const navVehicles = document.getElementById("navVehicles");
     const navConsulta = document.getElementById("navConsulta");
     const entryConsole = document.getElementById("entryConsole");
-    const visitsScreen = document.getElementById("visitsScreen");
-    const visitName = document.getElementById("visitName");
-    const visitDNI = document.getElementById("visitDNI");
-    const visitType = document.getElementById("visitType");
-    const visitCompany = document.getElementById("visitCompany");
-    const companyWrapper = document.getElementById("companyWrapper");
-    const visitResponsible = document.getElementById("visitResponsible");
-    const addVisitBtn = document.getElementById("addVisitBtn");
 
     const formScreen = document.getElementById("formScreen");
     const cuitInput = document.getElementById("cuit");
@@ -382,8 +294,6 @@
     const dniInput = document.getElementById("dni");
     const workerTypeSelect = document.getElementById("workerType");
     const documentsSection = document.getElementById("documentsSection");
-    const visitRespWrapperForm = document.getElementById("visitRespWrapperForm");
-    const respVisitaForm = document.getElementById("respVisitaForm");
     const saveBtn = document.getElementById("saveBtn");
     const clearFormBtn = document.getElementById("clearFormBtn");
 
@@ -414,14 +324,6 @@
     const exportPdfBtn = document.getElementById("exportPdfBtn");
     const exportExcelBtn = document.getElementById("exportExcelBtn");
     const reportTable = document.getElementById("reportTable");
-    const reportVehiclesPanel = document.getElementById("reportVehiclesPanel");
-
-    // VEHÍCULOS
-    const vehiclesScreen = document.getElementById("vehiclesScreen");
-    const vehFilterDominio = document.getElementById("vehFilterDominio");
-    const vehFilterTitular = document.getElementById("vehFilterTitular");
-    const refreshVehicles = document.getElementById("refreshVehicles");
-    const vehiclesTable = document.getElementById("vehiclesTable");
 
     // ---------- Login ----------
     loginBtn.addEventListener("click", () => {
@@ -449,7 +351,6 @@
     if (navWorkers) navWorkers.addEventListener("click", (ev) => { showWorkers(); });
     if (navCompanies) navCompanies.addEventListener("click", (ev) => { showCompanies(); });
     if (navReport) navReport.addEventListener("click", () => showReport());
-    if (navVehicles) navVehicles.addEventListener("click", () => showVehicles());
     if (navConsulta) navConsulta.addEventListener("click", () => { hideAllScreens(); safeRemove(entryConsole, "hidden"); });
 
     function hideAllScreens() {
@@ -458,7 +359,6 @@
       safeAdd(companiesScreen, "hidden");
       safeAdd(workerDetail, "hidden");
       safeAdd(reportScreen, "hidden");
-      safeAdd(vehiclesScreen, "hidden");
       // ocultar panel de consulta también
       safeAdd(entryConsole, "hidden");
     }
@@ -468,44 +368,24 @@
       documentsSection.innerHTML = "";
       let list = [...docsBase];
       const tipo = workerTypeSelect.value;
-      // Si es "Se visita", no se requieren documentos
-      if (tipo === "se_visita") {
-        documentsSection.innerHTML = `<div class="text-sm text-gray-500">Sin documentos requeridos para visitas.</div>`;
-        return;
-      }
       if (tipo === "monotributista") list.push(...docsMono);
       if (tipo === "dependencia") list.push(...docsDep);
 
       list.forEach(doc => {
         const div = document.createElement("div");
         div.className = "p-3 border rounded flex flex-col md:flex-row md:items-center md:justify-between gap-2";
-        // si es el Mail de la agencia ahora renderizamos un uploader de PDF (sin campo de vencimiento)
-        if (doc.key === "MAIL_AGENCIA") {
-          div.innerHTML = `
-            <div class="flex-1">
-              <div class="font-semibold">${doc.label}</div>
-              <div class="text-xs text-gray-600">Subir PDF (sin fecha de vencimiento)</div>
-            </div>
-            <div class="flex items-center gap-2">
-              <input type="file" accept="application/pdf" data-doc-key="${doc.key}" class="doc-file hidden" />
-              <button class="uploadBtn px-3 py-1 bg-blue-600 text-white rounded">Elegir PDF</button>
-              <div class="status ml-3 text-sm"></div>
-            </div>
-          `;
-        } else {
-           div.innerHTML = `
-             <div class="flex-1">
-               <div class="font-semibold">${doc.label}</div>
-               <div class="text-xs text-gray-600">Subir PDF y seleccionar fecha de vencimiento (opcional)</div>
-             </div>
-             <div class="flex items-center gap-2">
-               <input type="file" accept="application/pdf" data-doc-key="${doc.key}" class="doc-file hidden" />
-               <button class="uploadBtn px-3 py-1 bg-blue-600 text-white rounded">Elegir PDF</button>
-               <input type="date" class="vencimiento p-1 border rounded" />
-               <div class="status ml-3 text-sm"></div>
-             </div>
-           `;
-         }
+        div.innerHTML = `
+          <div class="flex-1">
+            <div class="font-semibold">${doc.label}</div>
+            <div class="text-xs text-gray-600">Subir PDF y seleccionar fecha de vencimiento (opcional)</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="file" accept="application/pdf" data-doc-key="${doc.key}" class="doc-file hidden" />
+            <button class="uploadBtn px-3 py-1 bg-blue-600 text-white rounded">Elegir PDF</button>
+            <input type="date" class="vencimiento p-1 border rounded" />
+            <div class="status ml-3 text-sm"></div>
+          </div>
+        `;
         documentsSection.appendChild(div);
 
         const fileInput = div.querySelector(".doc-file");
@@ -513,77 +393,58 @@
         const vencInput = div.querySelector(".vencimiento");
         const status = div.querySelector(".status");
 
-        if (uploadBtn && fileInput) {
-          uploadBtn.addEventListener("click", () => fileInput.click());
-          fileInput.addEventListener("change", async (ev) => {
-            const f = ev.target.files[0];
-            if (!f) return;
-            if (f.type !== "application/pdf") {
-              alert("Solo se permiten archivos PDF");
-              fileInput.value = "";
-              return;
-            }
-            const ab = await f.arrayBuffer();
-            const base64 = arrayBufferToBase64(ab);
-            // marcar temporalmente en el UI (se guardará en guardar registro)
-            uploadBtn.textContent = f.name;
-            uploadBtn.title = f.name;
-            uploadBtn.dataset.fileName = f.name;
-            uploadBtn.dataset.base64 = base64;
-            uploadBtn.dataset.key = doc.key;
-          });
-        }
-        // control de vencimiento visual (solo para los que tienen vencimiento input)
-        if (vencInput) {
-          vencInput.addEventListener("change", () => {
-            const today = new Date().toISOString().split("T")[0];
-            if (!vencInput.value) {
-              status.textContent = "";
-              status.className = "status ml-3 text-sm";
-              return;
-            }
-            if (vencInput.value < today) {
-              status.textContent = "Vencido";
-              status.className = "status ml-3 text-sm text-red-600 font-semibold";
-            } else {
-              status.textContent = "Vigente";
-              status.className = "status ml-3 text-sm text-green-600 font-semibold";
-            }
-          });
-        }
+        uploadBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", async (ev) => {
+          const f = ev.target.files[0];
+          if (!f) return;
+          if (f.type !== "application/pdf") {
+            alert("Solo se permiten archivos PDF");
+            fileInput.value = "";
+            return;
+          }
+          const ab = await f.arrayBuffer();
+          const base64 = arrayBufferToBase64(ab);
+          // marcar temporalmente en el UI (se guardará en guardar registro)
+          uploadBtn.textContent = f.name;
+          uploadBtn.title = f.name;
+          uploadBtn.dataset.fileName = f.name;
+          uploadBtn.dataset.base64 = base64;
+          uploadBtn.dataset.key = doc.key;
+        });
+
+        // control de vencimiento visual
+        vencInput.addEventListener("change", () => {
+          const today = new Date().toISOString().split("T")[0];
+          if (!vencInput.value) {
+            status.textContent = "";
+            status.className = "status ml-3 text-sm";
+            return;
+          }
+          if (vencInput.value < today) {
+            status.textContent = "Vencido";
+            status.className = "status ml-3 text-sm text-red-600 font-semibold";
+          } else {
+            status.textContent = "Vigente";
+            status.className = "status ml-3 text-sm text-green-600 font-semibold";
+          }
+        });
       });
     }
 
-    // Mostrar/ocultar el campo de Responsable según tipo
-    function updateVisitRespVisibility() {
-      if (!visitRespWrapperForm) return;
-      const isVisit = workerTypeSelect.value === "se_visita";
-      visitRespWrapperForm.classList.toggle("hidden", !isVisit);
-    }
-
-    workerTypeSelect.addEventListener("change", () => {
-      renderDocumentSlots();
-      updateVisitRespVisibility();
-    });
+    workerTypeSelect.addEventListener("change", renderDocumentSlots);
 
     // ---------- Guardar trabajador ----------
     saveBtn.addEventListener("click", () => {
-       const cuit = cuitInput ? cuitInput.value.trim() : "";
-       const empresa = empresaInput.value.trim();
-       const nombre = nombreInput.value.trim();
-       const dni = dniInput.value.trim();
-       const tipo = workerTypeSelect.value;
+      const cuit = cuitInput ? cuitInput.value.trim() : "";
+      const empresa = empresaInput.value.trim();
+      const nombre = nombreInput.value.trim();
+      const dni = dniInput.value.trim();
+      const tipo = workerTypeSelect.value;
 
-       if (!empresa || !nombre || !dni || !tipo) {
-         alert("Complete todos los campos obligatorios");
-         return;
-       }
-       if (tipo === "se_visita") {
-         if (!respVisitaForm || !respVisitaForm.value.trim()) {
-           alert("Complete Responsable de la visita");
-           return;
-         }
-       }
+      if (!empresa || !nombre || !dni || !tipo) {
+        alert("Complete todos los campos obligatorios");
+        return;
+      }
 
       // Verificar duplicado por DNI
       const existingIndex = records.findIndex(r => r.dni === dni);
@@ -591,59 +452,38 @@
         if (!confirm("Ya existe un trabajador con ese DNI. ¿Desea actualizarlo?")) return;
       }
 
-      // Recolectar documentos (vacío si es 'Se visita')
-      let documents = [];
-      if (tipo !== "se_visita") {
-        const docDivs = documentsSection.querySelectorAll("div");
-        documents = [];
-        docDivs.forEach(div => {
-          const uploadBtn = div.querySelector(".uploadBtn");
-          const vencInput = div.querySelector(".vencimiento");
-          const labelEl = div.querySelector(".font-semibold");
-          const label = labelEl ? labelEl.textContent : 'Documento';
-          const hasFile = !!(uploadBtn && uploadBtn.dataset && uploadBtn.dataset.base64);
-          if (hasFile) {
-            documents.push({
-              key: (uploadBtn.dataset && uploadBtn.dataset.key) || "",
-              label,
-              fileName: (uploadBtn.dataset && uploadBtn.dataset.fileName) || "archivo.pdf",
-              base64: uploadBtn.dataset.base64,
-              expiry: vencInput ? (vencInput.value || null) : null
-            });
-          } else if (vencInput && vencInput.value) {
-            // guardar slot con fecha aunque no tenga archivo
-            const key = (uploadBtn && uploadBtn.dataset && uploadBtn.dataset.key) || "";
-            documents.push({
-              key,
-              label,
-              fileName: null,
-              base64: null,
-              expiry: vencInput.value
-            });
-          }
-        });
-      }
+      // Recolectar documentos cargados en UI
+      const docDivs = documentsSection.querySelectorAll("div");
+      const documents = [];
+      docDivs.forEach(div => {
+        const uploadBtn = div.querySelector(".uploadBtn");
+        const vencInput = div.querySelector(".vencimiento");
+        const labelEl = div.querySelector(".font-semibold");
+        const label = labelEl ? labelEl.textContent : 'Documento';
+        const hasFile = uploadBtn && uploadBtn.dataset && uploadBtn.dataset.base64;
+        if (hasFile) {
+          documents.push({
+            key: (uploadBtn.dataset && uploadBtn.dataset.key) || "",
+            label,
+            fileName: (uploadBtn.dataset && uploadBtn.dataset.fileName) || "archivo.pdf",
+            base64: uploadBtn.dataset.base64,
+            expiry: vencInput ? (vencInput.value || null) : null
+          });
+        } else if (vencInput && vencInput.value) {
+          // guardar slot con fecha aunque no tenga archivo
+          const key = (uploadBtn && uploadBtn.dataset && uploadBtn.dataset.key) || "";
+          documents.push({
+            key,
+            label,
+            fileName: null,
+            base64: null,
+            expiry: vencInput.value
+          });
+        }
+      });
 
-      // armar objeto vehicle (opcional)
-      const vehicle = (vehDominio && (vehDominio.value || "").trim()) || (vehTitular && (vehTitular.value || "").trim())
-        ? {
-            dominio: (vehDominio.value || "").trim(),
-            marca: (vehMarca.value || "").trim(),
-            modelo: (vehModelo.value || "").trim(),
-            titular: (vehTitular.value || "").trim(),
-            site: (vehPPA && vehPPA.value) || "", // "PPA" | "VGG" | ""
-            policy: (vehPolicyBtn && vehPolicyBtn.dataset && vehPolicyBtn.dataset.base64)
-              ? { fileName: vehPolicyBtn.dataset.fileName, base64: vehPolicyBtn.dataset.base64, expiry: vehPolicyExpiry.value || null }
-              : null
-          }
-        : null;
+      const record = { cuit, empresa, nombre, dni, tipo, documents, createdAt: new Date().toISOString() };
 
-      const record = {
-        cuit, empresa, nombre, dni, tipo, documents, vehicle,
-        ...(tipo === "se_visita" && respVisitaForm ? { responsableVisita: respVisitaForm.value.trim() } : {}),
-        createdAt: new Date().toISOString()
-      };
- 
       if (existingIndex !== -1) {
         records[existingIndex] = record;
         alert("Registro actualizado");
@@ -665,9 +505,6 @@
       dniInput.value = "";
       workerTypeSelect.value = "";
       documentsSection.innerHTML = "";
-      clearVehicleForm();
-      if (respVisitaForm) respVisitaForm.value = "";
-      updateVisitRespVisibility();
     }
 
     // ---------- Listado de trabajadores ----------
@@ -688,26 +525,22 @@
 
         const tr = document.createElement("tr");
         tr.className = "border-b";
-        const docsHtml = r.documents && r.documents.length
-          ? r.documents.map(d => {
-              // color by expiry if exists
-              let status = "";
-              if (d.expiry) {
-                const today = new Date().toISOString().split("T")[0];
-                status = d.expiry < today ? `<span class="text-red-600 font-semibold">Vencido</span>` : `<span class="text-green-600 font-semibold">Vigente</span>`;
-              }
-              return `<div class="text-xs">${d.label} ${d.fileName ? `- ${d.fileName}` : ''} ${status}</div>`;
-            }).join("")
-          : "<div class='text-xs text-gray-500'>Sin documentos</div>";
-        const vehicleHtml = r.vehicle
-          ? `<div class="text-xs text-blue-600">Veh: ${r.vehicle.dominio} (${r.vehicle.marca || ''} ${r.vehicle.modelo || ''})</div>`
-          : "";
+        const docsHtml = r.documents && r.documents.length ? r.documents.map(d => {
+          // color by expiry if exists
+          let status = "";
+          if (d.expiry) {
+            const today = new Date().toISOString().split("T")[0];
+            status = d.expiry < today ? `<span class="text-red-600 font-semibold">Vencido</span>` : `<span class="text-green-600 font-semibold">Vigente</span>`;
+          }
+          return `<div class="text-xs">${d.label} ${d.fileName ? `- ${d.fileName}` : ''} ${status}</div>`;
+        }).join("") : "<div class='text-xs text-gray-500'>Sin documentos</div>";
+
         tr.innerHTML = `
           <td class="p-2">${r.dni}</td>
           <td class="p-2">${r.nombre}</td>
           <td class="p-2">${r.empresa}</td>
           <td class="p-2">${r.tipo}</td>
-          <td class="p-2">${docsHtml}${vehicleHtml}</td>
+          <td class="p-2">${docsHtml}</td>
           <td class="p-2">
             <button class="viewBtn bg-blue-600 text-white px-2 py-1 rounded">Ver</button>
             <button class="delBtn bg-red-500 text-white px-2 py-1 rounded ml-1">Eliminar</button>
@@ -786,10 +619,6 @@
           nombreInput.value = found.nombre;
           workerTypeSelect.value = found.tipo;
           renderDocumentSlots();
-          updateVisitRespVisibility();
-          if (found.tipo === "se_visita" && respVisitaForm) {
-            respVisitaForm.value = found.responsableVisita || "";
-          }
           // rellenar los slots con info de documentos si existen
           setTimeout(() => { // esperar que slots se creen
             const divs = documentsSection.querySelectorAll("div");
@@ -818,7 +647,7 @@
                 }
               }
             });
-           }, 50);
+          }, 50);
         }
       }
     });
@@ -854,7 +683,7 @@
         row.className = "p-2 border rounded mb-2 flex items-center justify-between gap-2";
         const left = document.createElement("div");
         left.innerHTML = `<div class="font-semibold">${d.label}</div>
-                          ${d.value ? `<div class="text-xs text-gray-600">Correo: ${d.value}</div>` : `<div class="text-xs text-gray-600">${d.fileName ? d.fileName : '(sin archivo)'}</div>`}
+                          <div class="text-xs text-gray-600">${d.fileName ? d.fileName : '(sin archivo)'}</div>
                           <div class="text-xs">Vencimiento: ${d.expiry ? d.expiry : '—'}</div>`;
         const right = document.createElement("div");
         const downloadBtn = document.createElement("button");
@@ -880,27 +709,6 @@
         docsDiv.appendChild(row);
       });
       detailBody.appendChild(docsDiv);
-
-      if (r.vehicle) {
-        const vehicleDiv = document.createElement("div");
-        vehicleDiv.innerHTML = `<div class="font-semibold mb-2">Vehículo</div>
-          <div class="p-2 border rounded mb-2">
-            <div><b>Dominio:</b> ${r.vehicle.dominio || '—'}</div>
-            <div><b>Marca/Modelo:</b> ${r.vehicle.marca || ''} ${r.vehicle.modelo || ''}</div>
-            <div><b>Titular:</b> ${r.vehicle.titular || '—'}</div>
-            <div><b>Registrado en:</b> ${r.vehicle.site || '—'}</div>
-            ${r.vehicle.policy ? `<div><b>Póliza:</b> ${r.vehicle.policy.fileName || ''} ${r.vehicle.policy.expiry ? '- Vto: ' + r.vehicle.policy.expiry : ''}</div>` : '<div><b>Póliza:</b> No cargada</div>'}
-            ${r.vehicle.policy && r.vehicle.policy.base64 ? `<button class="downloadVehiclePolicyBtn bg-blue-600 text-white px-3 py-1 rounded text-sm mt-2">Descargar Póliza</button>` : ''}
-          </div>`;
-        detailBody.appendChild(vehicleDiv);
-        const downloadBtn = vehicleDiv.querySelector('.downloadVehiclePolicyBtn');
-        if (downloadBtn) {
-          downloadBtn.addEventListener("click", () => {
-            if (!r.vehicle.policy || !r.vehicle.policy.base64) return alert("No hay póliza para descargar.");
-            downloadBase64AsFile(r.vehicle.policy.base64, r.vehicle.policy.fileName || `poliza_${r.vehicle.dominio || 'vehiculo'}.pdf`);
-          });
-        }
-      }
     }
 
     closeDetailBtn.addEventListener("click", () => {
@@ -988,14 +796,12 @@
       hideAllScreens();
       formScreen.classList.remove("hidden");
       renderDocumentSlots();
-      updateVisitRespVisibility();
     }
 
     // Mostrar lista al inicio si hay registros
     function init() {
       renderDocumentSlots();
       renderWorkersTable();
-      updateVisitRespVisibility();
       // si el usuario abre reporte desde inicio, actualizar filtros
       try { if (typeof renderReportTable === 'function') renderReportTable(); } catch(e){}
     }
@@ -1022,24 +828,14 @@
       const dniQ = (reportDNI && reportDNI.value || "").trim();
       const nameQ = (reportName && reportName.value || "").trim().toLowerCase();
 
-      // header: Ingreso / Egreso / CUIT / DNI / Nombre / Empresa / Responsable / Tipo / Vehículo / #Docs / Acciones
+      // header
       const thead = document.createElement("tr");
       thead.className = "font-semibold border-b";
-      thead.innerHTML = `<td class="p-2">Ingreso</td>
-                          <td class="p-2">Egreso</td>
-                          <td class="p-2">CUIT</td>
-                          <td class="p-2">DNI</td>
-                          <td class="p-2">Nombre</td>
-                          <td class="p-2">Empresa</td>
-                          <td class="p-2">Responsable</td>
-                          <td class="p-2">Tipo</td>
-+                         <td class="p-2">Vehículo</td>
-                          <td class="p-2"># Docs</td>
-                          <td class="p-2">Acciones</td>`;
+      thead.innerHTML = `<td class="p-2">Fecha</td><td class="p-2">CUIT</td><td class="p-2">DNI</td><td class="p-2">Nombre</td><td class="p-2">Empresa</td><td class="p-2">Tipo</td><td class="p-2"># Docs</td>`;
       reportTable.appendChild(thead);
 
       const rows = [];
-      records.forEach((r, i) => {
+      records.forEach(r => {
         const created = r.createdAt ? r.createdAt.split("T")[0] : null;
         if (start && created && created < start) return;
         if (end && created && created > end) return;
@@ -1047,181 +843,200 @@
         if (cuitQ && (!r.cuit || !String(r.cuit).includes(cuitQ))) return;
         if (dniQ && (!r.dni || !String(r.dni).includes(dniQ))) return;
         if (nameQ && (!r.nombre || !r.nombre.toLowerCase().includes(nameQ))) return;
-        rows.push({ r, idx: i });
+        rows.push(r);
       });
 
-      rows.forEach(item => {
-        const r = item.r;
-        const idx = item.idx;
+      rows.forEach(r => {
         const tr = document.createElement("tr");
         tr.className = "border-b";
-        const ingreso = fmtDateTime(r.createdAt);
-        const egreso = r.exitAt ? fmtDateTime(r.exitAt) : "";
-        const responsable = r.responsableVisita || r.responsable || "";
-        const docsCount = (r.documents || []).length;
-        const actionHtml = r.exitAt ? "" : `<button class="registerExitBtn bg-yellow-500 text-white px-2 py-1 rounded text-sm" data-idx="${idx}">Registrar Salida</button>`;
-        const vehResumen = r.vehicle ? `${r.vehicle.dominio || ''} (${r.vehicle.marca || ''} ${r.vehicle.modelo || ''})` : '—';
-        tr.innerHTML = `<td class="p-2">${ingreso}</td>
-                        <td class="p-2">${egreso}</td>
+        tr.innerHTML = `<td class="p-2">${r.createdAt ? r.createdAt.split("T")[0] : ''}</td>
                         <td class="p-2">${r.cuit || ''}</td>
                         <td class="p-2">${r.dni}</td>
                         <td class="p-2">${r.nombre}</td>
                         <td class="p-2">${r.empresa}</td>
-                        <td class="p-2">${responsable}</td>
                         <td class="p-2">${r.tipo}</td>
-+                       <td class="p-2">${vehResumen}</td>
-                        <td class="p-2">${docsCount}</td>
-                        <td class="p-2">${actionHtml}</td>`;
+                        <td class="p-2">${(r.documents || []).length}</td>`;
         reportTable.appendChild(tr);
-        const btn = tr.querySelector('.registerExitBtn');
-        if (btn) {
-          btn.addEventListener('click', () => {
-            if (!confirm('Registrar salida y guardar hora de egreso?')) return;
-            records[idx].exitAt = new Date().toISOString();
-            saveRecords(records);
-            renderReportTable();
-            renderWorkersTable();
-          });
+      });
+    }
+
+    // Export CSV (Excel)
+    function exportReportCSV() {
+      const start = reportStart && reportStart.value ? reportStart.value : null;
+      const end = reportEnd && reportEnd.value ? reportEnd.value : null;
+      const empresaQ = (reportEmpresa && reportEmpresa.value || "").trim().toLowerCase();
+      const cuitQ = (reportCUIT && reportCUIT.value || "").trim();
+      const dniQ = (reportDNI && reportDNI.value || "").trim();
+      const nameQ = (reportName && reportName.value || "").trim().toLowerCase();
+
+      const filtered = records.filter(r => {
+        const created = r.createdAt ? r.createdAt.split("T")[0] : null;
+        if (start && created && created < start) return false;
+        if (end && created && created > end) return false;
+        if (empresaQ && (!r.empresa || !r.empresa.toLowerCase().includes(empresaQ))) return false;
+        if (cuitQ && (!r.cuit || !String(r.cuit).includes(cuitQ))) return false;
+        if (dniQ && (!r.dni || !String(r.dni).includes(dniQ))) return false;
+        if (nameQ && (!r.nombre || !r.nombre.toLowerCase().includes(nameQ))) return false;
+        return true;
+      });
+      if (!filtered.length) return alert("No hay registros para exportar.");
+      const lines = [["Fecha","CUIT","DNI","Nombre","Empresa","Tipo","#Docs"]];
+      filtered.forEach(r => lines.push([r.createdAt ? r.createdAt.split("T")[0] : "", r.cuit||"", r.dni||"", r.nombre||"", r.empresa||"", r.tipo||"", (r.documents||[]).length]));
+      const csv = lines.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte_ingresos_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Export PDF (simple table using jsPDF)
+    function exportReportPDF() {
+      const start = reportStart && reportStart.value ? reportStart.value : null;
+      const end = reportEnd && reportEnd.value ? reportEnd.value : null;
+      const empresaQ = (reportEmpresa && reportEmpresa.value || "").trim().toLowerCase();
+      const cuitQ = (reportCUIT && reportCUIT.value || "").trim();
+      const dniQ = (reportDNI && reportDNI.value || "").trim();
+      const nameQ = (reportName && reportName.value || "").trim().toLowerCase();
+
+      const filtered = records.filter(r => {
+        const created = r.createdAt ? r.createdAt.split("T")[0] : null;
+        if (start && created && created < start) return false;
+        if (end && created && created > end) return false;
+        if (empresaQ && (!r.empresa || !r.empresa.toLowerCase().includes(empresaQ))) return false;
+        if (cuitQ && (!r.cuit || !String(r.cuit).includes(cuitQ))) return false;
+        if (dniQ && (!r.dni || !String(r.dni).includes(dniQ))) return false;
+        if (nameQ && (!r.nombre || !r.nombre.toLowerCase().includes(nameQ))) return false;
+        return true;
+      });
+      if (!filtered.length) return alert("No hay registros para exportar.");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l', 'pt', 'a4');
+      const margin = 40;
+      let y = 40;
+      doc.setFontSize(14);
+      doc.text("Reporte de Ingresos", margin, y);
+      y += 20;
+      doc.setFontSize(10);
+      const header = ["Fecha","CUIT","DNI","Nombre","Empresa","Tipo","#Docs"];
+      // pintar header
+      let x = margin;
+      const colW = [(70),(80),(70),(180),(140),(100),(50)];
+      header.forEach((h, i) => { doc.text(String(h), x, y); x += colW[i]; });
+      y += 14;
+      // filas
+      filtered.forEach(r => {
+        x = margin;
+        const row = [r.createdAt ? r.createdAt.split("T")[0] : "", r.cuit||"", r.dni||"", r.nombre||"", r.empresa||"", r.tipo||"", String((r.documents||[]).length)];
+        row.forEach((cell, i) => {
+          const lines = doc.splitTextToSize(String(cell), colW[i]-6);
+          doc.text(lines, x, y);
+          x += colW[i];
+        });
+        y += 14;
+        if (y > 520) { doc.addPage(); y = 40; }
+      });
+      doc.save(`reporte_ingresos_${new Date().toISOString().slice(0,10)}.pdf`);
+    }
+
+    // listeners
+    if (reportRefresh) reportRefresh.addEventListener("click", renderReportTable);
+    if (exportExcelBtn) exportExcelBtn.addEventListener("click", exportReportCSV);
+    if (exportPdfBtn) exportPdfBtn.addEventListener("click", exportReportPDF);
+
+    // ---------- Nuevo: Console de verificación por DNI ----------
+    const checkDNIInput = document.getElementById('checkDNIInput');
+    const checkDNIBtn = document.getElementById('checkDNIBtn');
+    const checkResult = document.getElementById('checkResult');
+    const registerEntryBtn = document.getElementById('registerEntryBtn');
+
+    function formatList(items) { return items.map(i => `<div>- ${i}</div>`).join(''); }
+
+    // Determina lista de documentos requeridos según tipo
+    function requiredDocsForTipo(tipo) {
+      let list = [...docsBase];
+      if (tipo === 'monotributista') list.push(...docsMono);
+      if (tipo === 'dependencia') list.push(...docsDep);
+      return list;
+    }
+
+    // Verifica si el trabajador está apto: devuelve { ok: bool, missing: [], expired: [], msg }
+    function verifyWorkerForEntry(worker) {
+      const today = new Date().toISOString().split('T')[0];
+      const required = requiredDocsForTipo(worker.tipo);
+      const missing = [];
+      const expired = [];
+
+      required.forEach(req => {
+        // buscar por key preferentemente, fallback por label
+        const found = (worker.documents || []).find(d => (d.key && d.key === req.key) || (d.label && d.label === req.label));
+        if (!found) {
+          missing.push(req.label);
+          return;
         }
+        // exigir archivo o al menos fileName
+        const hasFile = !!(found.base64 || found.fileName);
+        if (!hasFile) { missing.push(req.label); return; }
+        // si tiene expiry, verificar vigencia; si no tiene expiry, considerar como faltante (según regla "con fecha en vigencia")
+        if (!found.expiry) { missing.push(req.label + " (sin fecha)"); return; }
+        if (found.expiry < today) { expired.push(`${req.label} (vto ${found.expiry})`); }
       });
 
-     // Render panel de vehículos (claro) con tarjetas
-     if (reportVehiclesPanel) {
-       const vehRows = rows.filter(x => x.r.vehicle);
-       if (!vehRows.length) {
-         reportVehiclesPanel.classList.add("hidden");
-         reportVehiclesPanel.innerHTML = "";
-       } else {
-         reportVehiclesPanel.classList.remove("hidden");
-         const cards = vehRows.map(x => {
-           const v = x.r.vehicle;
-           const pol = v.policy;
-           const polText = pol ? `${pol.fileName || ''}${pol.expiry ? ' — Vto: ' + pol.expiry : ''}` : 'No cargada';
-           const site = v.site ? ` — Site: ${v.site}` : '';
-           const btn = pol && pol.base64 ? `<button class="vehPolBtn bg-blue-600 text-white px-2 py-1 rounded text-xs" data-idx="${x.idx}">Descargar póliza</button>` : '';
-           return `
-             <div class="p-3 border rounded bg-white">
-               <div class="font-semibold">${x.r.nombre} — ${x.r.dni}</div>
-               <div class="text-sm text-gray-700">${x.r.empresa || ''}</div>
-               <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                 <div><b>Dominio:</b> ${v.dominio || '—'}</div>
-                 <div><b>Marca/Modelo:</b> ${v.marca || ''} ${v.modelo || ''}</div>
-                 <div><b>Titular:</b> ${v.titular || '—'}</div>
-               </div>
-               <div class="mt-1 text-sm"><b>Registrado en:</b> ${v.site || '—'}${site ? '' : ''}</div>
-               <div class="mt-1 text-sm"><b>Póliza:</b> ${polText} ${btn}</div>
-             </div>`;
-         }).join("");
-         reportVehiclesPanel.innerHTML = `
-           <div class="font-semibold mb-2">Vehículos en ingresos filtrados</div>
-           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">${cards}</div>
-         `;
-         // Handlers descarga póliza desde el panel
-         reportVehiclesPanel.querySelectorAll('.vehPolBtn').forEach(b => {
-           b.addEventListener('click', () => {
-             const idx = parseInt(b.getAttribute('data-idx'), 10);
-             const rec = records[idx];
-             if (!rec || !rec.vehicle || !rec.vehicle.policy || !rec.vehicle.policy.base64) return alert("No hay póliza para descargar.");
-             downloadBase64AsFile(rec.vehicle.policy.base64, rec.vehicle.policy.fileName || `poliza_${rec.vehicle.dominio || 'vehiculo'}.pdf`);
-           });
-         });
-       }
-     }
+      const ok = (missing.length === 0 && expired.length === 0);
+      const msg = ok ? 'APROBADO: puede ingresar' : 'RECHAZADO: revisar documentación';
+      return { ok, missing, expired, msg };
     }
 
-    // ---------- Listado general de vehículos ----------
-    function collectVehicles() {
-      const items = [];
-      records.forEach((r, idx) => {
-        const v = r.vehicle;
-        if (v && (v.dominio || "").trim()) {
-          const key = (v.dominio || "").trim().toUpperCase();
-          items.push({
-            key,
-            dominio: v.dominio || "",
-            marca: v.marca || "",
-            modelo: v.modelo || "",
-            titular: v.titular || "",
-            site: v.site || "",
-            policy: v.policy || null,
-            workerName: r.nombre || "",
-            dni: r.dni || "",
-            empresa: r.empresa || "",
-            recordIndex: idx,
-            createdAt: r.createdAt || ""
-          });
-        }
-      });
-      const map = {};
-      items.forEach(it => {
-        const prev = map[it.key];
-        if (!prev || String(it.createdAt) > String(prev.createdAt)) map[it.key] = it;
-      });
-      return Object.values(map).sort((a,b) => (a.dominio || '').localeCompare(b.dominio || ''));
-    }
-    
-    function renderVehiclesTable() {
-      if (!vehiclesTable) return;
-      vehiclesTable.innerHTML = "";
-      // Header
-      const thead = document.createElement("tr");
-      thead.className = "font-semibold border-b";
-      thead.innerHTML = `
-        <td class="p-2">Dominio</td>
-        <td class="p-2">Marca / Modelo</td>
-        <td class="p-2">Titular</td>
-        <td class="p-2">Site</td>
-        <td class="p-2">Póliza</td>
-        <td class="p-2">Trabajador</td>
-        <td class="p-2">Empresa</td>
-        <td class="p-2">Acciones</td>`;
-      vehiclesTable.appendChild(thead);
+    let lastCheckedWorker = null;
 
-      const domQ = (vehFilterDominio && vehFilterDominio.value || "").trim().toLowerCase();
-      const titQ = (vehFilterTitular && vehFilterTitular.value || "").trim().toLowerCase();
-      const data = collectVehicles().filter(v =>
-        (!domQ || (v.dominio || "").toLowerCase().includes(domQ)) &&
-        (!titQ || (v.titular || "").toLowerCase().includes(titQ))
-      );
+    if (checkDNIBtn) checkDNIBtn.addEventListener('click', () => {
+      const dni = (checkDNIInput && checkDNIInput.value || '').trim();
+      checkResult.innerHTML = '';
+      if (!dni) { checkResult.innerHTML = `<span class="text-red-600">Ingrese un DNI</span>`; registerEntryBtn.classList.add('hidden'); return; }
+      // buscar el último registro del trabajador (por DNI) - tomar el más reciente
+      const foundIndex = records.map((r, i) => ({r,i})).filter(x => x.r.dni === dni).sort((a,b) => (b.r.createdAt||'').localeCompare(a.r.createdAt||''))[0];
+      if (!foundIndex) {
+        checkResult.innerHTML = `<span class="text-red-600">No existe trabajador con DNI ${dni}</span>`;
+        registerEntryBtn.classList.add('hidden');
+        lastCheckedWorker = null;
+        return;
+      }
+      const worker = foundIndex.r;
+      lastCheckedWorker = worker;
+      const res = verifyWorkerForEntry(worker);
+      if (res.ok) {
+        checkResult.innerHTML = `<span class="text-green-600 font-semibold">${res.msg}</span>`;
+        registerEntryBtn.classList.remove('hidden');
+      } else {
+        let html = `<div class="text-red-600 font-semibold">${res.msg}</div>`;
+        if (res.missing.length) html += `<div class="mt-1 text-sm">Faltantes:${formatList(res.missing)}</div>`;
+        if (res.expired.length) html += `<div class="mt-1 text-sm">Vencidos:${formatList(res.expired)}</div>`;
+        checkResult.innerHTML = html;
+        registerEntryBtn.classList.add('hidden');
+      }
+    });
 
-      data.forEach(v => {
-        const tr = document.createElement("tr");
-        tr.className = "border-b";
-        const pol = v.policy;
-        const vto = pol && pol.expiry ? pol.expiry : "";
-        const status = vto ? (vto < new Date().toISOString().split("T")[0] ? `<span class="text-red-600 font-semibold">Vencido</span>` : `<span class="text-green-600 font-semibold">Vigente</span>`) : "—";
-        const btn = pol && pol.base64 ? `<button class="vehPolBtn bg-blue-600 text-white px-2 py-1 rounded text-sm" data-idx="${v.recordIndex}">Descargar</button>` : "";
-        tr.innerHTML = `
-          <td class="p-2">${v.dominio}</td>
-          <td class="p-2">${v.marca} ${v.modelo}</td>
-          <td class="p-2">${v.titular || '—'}</td>
-          <td class="p-2">${v.site || '—'}</td>
-          <td class="p-2">${pol ? (pol.fileName || '') : 'No cargada'} ${vto ? `- Vto: ${vto}` : ''} ${pol ? status : ''}</td>
-          <td class="p-2">${v.workerName} — ${v.dni}</td>
-          <td class="p-2">${v.empresa}</td>
-          <td class="p-2">${btn}</td>`;
-        vehiclesTable.appendChild(tr);
-        const dBtn = tr.querySelector(".vehPolBtn");
-        if (dBtn) {
-          dBtn.addEventListener("click", () => {
-            const idx = parseInt(dBtn.getAttribute("data-idx"), 10);
-            const rec = records[idx];
-            if (!rec || !rec.vehicle || !rec.vehicle.policy || !rec.vehicle.policy.base64) { alert("No hay póliza para descargar."); return; }
-            downloadBase64AsFile(rec.vehicle.policy.base64, rec.vehicle.policy.fileName || `poliza_${rec.vehicle.dominio || 'vehiculo'}.pdf`);
-          });
-        }
-      });
-    }
-    
-    function showVehicles() {
-      hideAllScreens();
-      if (vehiclesScreen) vehiclesScreen.classList.remove("hidden");
-      renderVehiclesTable();
-    }
-    
-    if (refreshVehicles) refreshVehicles.addEventListener("click", renderVehiclesTable);
-    if (vehFilterDominio) vehFilterDominio.addEventListener("input", renderVehiclesTable);
-    if (vehFilterTitular) vehFilterTitular.addEventListener("input", renderVehiclesTable);
+    // Registrar ingreso: crea una nueva entrada (copia) con createdAt = ahora y la añade a records + actualiza reportes
+    if (registerEntryBtn) registerEntryBtn.addEventListener('click', () => {
+      if (!lastCheckedWorker) return alert('No hay trabajador verificado.');
+      const now = new Date().toISOString();
+      const newRecord = Object.assign({}, lastCheckedWorker, { createdAt: now });
+      // opcional: eliminar id/identificadores si existen
+      records.push(newRecord);
+      saveRecords(records);
+      renderReportTable && renderReportTable();
+      renderWorkersTable && renderWorkersTable();
+      checkResult.innerHTML = `<span class="text-green-700 font-semibold">Ingreso registrado: ${lastCheckedWorker.nombre} (${lastCheckedWorker.dni})</span>`;
+      registerEntryBtn.classList.add('hidden');
+      // limpiar input
+      if (checkDNIInput) checkDNIInput.value = '';
+      lastCheckedWorker = null;
+    });
+
   </script>
 </body>
 </html>
