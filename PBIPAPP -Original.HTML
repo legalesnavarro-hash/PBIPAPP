@@ -50,7 +50,6 @@
         <button id="navCompanies" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Empresas</button>
         <button id="navReport" type="button" class="px-4 py-2 bg-gray-200 rounded">Reporte Ingresos</button>
         <button id="navCredencial" type="button" class="px-4 py-2 bg-gray-200 rounded">Generar Credencial</button>
-        <button id="navVehiculos" type="button" class="px-4 py-2 bg-gray-200 rounded">Vehículos</button>
       </div>
       <button id="logoutBtn" class="ml-auto px-4 py-2 bg-red-500 text-white rounded">Cerrar sesión</button>
     </nav>
@@ -295,17 +294,6 @@
       </div>
     </section>
 
-    <!-- MODULO VEHICULOS -->
-    <section id="vehiculosScreen" class="hidden bg-white p-6 rounded shadow">
-      <h3 class="text-xl font-bold mb-4">Módulo Vehículos</h3>
-      <div class="mb-6 flex gap-4 items-center">
-        <input id="vehiculoBuscarDominio" class="w-64 p-2 border rounded" placeholder="Buscar por dominio..." />
-        <button id="buscarVehiculoBtn" class="px-3 py-1 bg-blue-600 text-white rounded">Buscar</button>
-        <button id="agregarVehiculoBtn" class="px-3 py-1 bg-green-600 text-white rounded">Agregar nuevo vehículo</button>
-      </div>
-      <div id="vehiculoDatos" class="mt-4"></div>
-    </section>
-
     <!-- after NAV (insert console) -->
     <div id="entryConsole" class="hidden max-w-6xl mx-auto mt-4 p-3 bg-white rounded shadow flex items-center gap-3">
       <label class="text-sm font-medium">Control ingreso (DNI):</label>
@@ -420,7 +408,6 @@ window.addEventListener('DOMContentLoaded', function() {
     const navCompanies = document.getElementById("navCompanies");
     const navReport = document.getElementById("navReport");
     const navCredencial = document.getElementById("navCredencial");
-    const navVehiculos = document.getElementById("navVehiculos");
     const entryConsole = document.getElementById("entryConsole");
 
     const formScreen = document.getElementById("formScreen");
@@ -495,10 +482,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
   hideAllScreens();
   credencialScreen.classList.remove("hidden");
 });
-    if (navVehiculos) navVehiculos.addEventListener("click", () => {
-  hideAllScreens();
-  vehiculosScreen.classList.remove("hidden");
-});
 
     function hideAllScreens() {
       safeAdd(formScreen, "hidden");
@@ -507,7 +490,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
       safeAdd(workerDetail, "hidden");
       safeAdd(reportScreen, "hidden");
       safeAdd(credencialScreen, "hidden");
-      safeAdd(vehiculosScreen, "hidden");
     }
 
     // ---------- Mostrar/ocultar el formulario de vehículo según selección ----------
@@ -1285,112 +1267,6 @@ doc.text('Creado: ' + fechaStr + ' ' + horaStr, 43, 51, {align:'center'});
     }
   };
   reader.readAsDataURL(pdfBlob);
-});
-
-// JS para módulo vehículos
-const vehiculoBuscarDominio = document.getElementById("vehiculoBuscarDominio");
-const buscarVehiculoBtn = document.getElementById("buscarVehiculoBtn");
-const agregarVehiculoBtn = document.getElementById("agregarVehiculoBtn");
-const vehiculoDatos = document.getElementById("vehiculoDatos");
-
-let vehiculoFormNuevo = null;
-
-agregarVehiculoBtn.addEventListener("click", () => {
-  // Si ya existe el form, no lo duplica
-  if (vehiculoFormNuevo) {
-    vehiculoFormNuevo.classList.remove("hidden");
-    return;
-  }
-  vehiculoFormNuevo = document.createElement("div");
-  vehiculoFormNuevo.className = "bg-gray-50 border rounded p-4 mb-4";
-  vehiculoFormNuevo.innerHTML = `
-    <h4 class='text-lg font-bold mb-2'>Nuevo Vehículo</h4>
-    <div class='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
-      <div><label>Dominio</label><input id='nuevoDominio' class='w-full p-2 border rounded' /></div>
-      <div><label>Marca</label><input id='nuevoMarca' class='w-full p-2 border rounded' /></div>
-      <div><label>Modelo</label><input id='nuevoModelo' class='w-full p-2 border rounded' /></div>
-      <div><label>Color</label><input id='nuevoColor' class='w-full p-2 border rounded' /></div>
-      <div><label>Año</label><input id='nuevoAnio' class='w-full p-2 border rounded' /></div>
-      <div><label>Vencimiento documentación</label><input id='nuevoVencimiento' type='date' class='w-full p-2 border rounded' /></div>
-      <div class='col-span-3 flex items-center gap-2 mt-2'>
-        <label>PDF documentación</label>
-        <input type='file' id='nuevoPdf' accept='application/pdf' class='hidden' />
-        <button id='nuevoPdfBtn' class='px-3 py-1 bg-blue-600 text-white rounded'>Elegir PDF</button>
-        <span id='nuevoPdfStatus' class='ml-3 text-sm'></span>
-      </div>
-    </div>
-    <div class='flex gap-2'>
-      <button id='guardarVehiculoBtn' class='bg-green-600 text-white px-4 py-2 rounded'>Guardar</button>
-      <button id='cancelarVehiculoBtn' class='bg-gray-300 px-4 py-2 rounded'>Cancelar</button>
-    </div>
-  `;
-  vehiculoDatos.prepend(vehiculoFormNuevo);
-
-  // PDF file logic
-  const nuevoPdf = vehiculoFormNuevo.querySelector('#nuevoPdf');
-  const nuevoPdfBtn = vehiculoFormNuevo.querySelector('#nuevoPdfBtn');
-  const nuevoPdfStatus = vehiculoFormNuevo.querySelector('#nuevoPdfStatus');
-  let pdfBase64 = "";
-  nuevoPdfBtn.addEventListener('click', () => nuevoPdf.click());
-  nuevoPdf.addEventListener('change', async (ev) => {
-    const f = ev.target.files[0];
-    if (!f) return;
-    if (f.type !== "application/pdf") {
-      alert("Solo se permiten archivos PDF");
-      nuevoPdf.value = "";
-      return;
-    }
-    const ab = await f.arrayBuffer();
-    pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
-    nuevoPdfBtn.textContent = f.name;
-    nuevoPdfBtn.title = f.name;
-    nuevoPdfStatus.textContent = "PDF listo para subir";
-  });
-
-  // Guardar vehículo
-  vehiculoFormNuevo.querySelector('#guardarVehiculoBtn').addEventListener('click', async () => {
-    const Dominio = vehiculoFormNuevo.querySelector('#nuevoDominio').value.trim().toUpperCase();
-    const Marca = vehiculoFormNuevo.querySelector('#nuevoMarca').value.trim();
-    const Modelo = vehiculoFormNuevo.querySelector('#nuevoModelo').value.trim();
-    const Color = vehiculoFormNuevo.querySelector('#nuevoColor').value.trim();
-    const Año = vehiculoFormNuevo.querySelector('#nuevoAnio').value.trim();
-    const Vencimiento = vehiculoFormNuevo.querySelector('#nuevoVencimiento').value;
-    if (!Dominio || !Marca || !Modelo || !Color || !Año) {
-      alert('Complete todos los campos obligatorios');
-      return;
-    }
-    let pdfUrl = null;
-    if (window.supabase && window.supabase.createClient) {
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      // Subir PDF si existe
-      if (pdfBase64) {
-        const fileName = `${Dominio}_VEHICULO_${Date.now()}.pdf`;
-        const fileData = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-        const { data, error } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
-          contentType: 'application/pdf', upsert: true
-        });
-        if (!error) {
-          pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
-        }
-      }
-      // Insertar en tabla Vehículos
-      const { error: insertError } = await supabase.from('Vehículos').insert([
-        { Dominio, Marca, Modelo, Color, Año, Vencimiento, PdfUrl: pdfUrl }
-      ]);
-      if (insertError) {
-        alert('Error al guardar vehículo: ' + (insertError.message || insertError));
-        return;
-      }
-      alert('Vehículo guardado correctamente');
-      vehiculoFormNuevo.remove();
-      vehiculoFormNuevo = null;
-    }
-  });
-  // Cancelar
-  vehiculoFormNuevo.querySelector('#cancelarVehiculoBtn').addEventListener('click', () => {
-    vehiculoFormNuevo.remove();
-    vehiculoFormNuevo = null;
-  });
 });
   </script>
 </body>
