@@ -910,7 +910,7 @@ if (vehiculoIngreso && vehiculoForm) {
       // header
       const thead = document.createElement("tr");
       thead.className = "font-semibold border-b";
-      thead.innerHTML = `<td class="p-2">CUIT</td><td class="p-2">DNI</td><td class="p-2">Empresa</td><td class="p-2">Tipo de trabajador</td><td class="p-2">Fecha Ingreso</td><td class="p-2">Fecha Salida</td><td class="p-2">Permanencia</td><td class="p-2">Acción</td>`;
+      thead.innerHTML = `<td class="p-2">CUIT</td><td class="p-2">DNI</td><td class="p-2">Empresa</td><td class="p-2">Tipo de trabajador</td><td class="p-2">Dominio vehículo</td><td class="p-2">Fecha Ingreso</td><td class="p-2">Fecha Salida</td><td class="p-2">Permanencia</td><td class="p-2">Acción</td>`;
       reportTable.appendChild(thead);
       // Leer registros desde Supabase
       if (window.supabase && window.supabase.createClient) {
@@ -955,7 +955,14 @@ if (vehiculoIngreso && vehiculoForm) {
             };
             const tr = document.createElement("tr");
             tr.className = "border-b";
-            tr.innerHTML = `<td class="p-2">${r.CUIT || ''}</td><td class="p-2">${r.DNI || ''}</td><td class="p-2">${r.Empresa || ''}</td><td class="p-2">${r["Tipo de trabajador"] || ''}</td><td class="p-2">${formatDateTime(r["Fecha Ingreso"])}</td><td class="p-2">${formatDateTime(r["Fecha Salida"])}</td><td class="p-2">${permanencia}</td><td class="p-2">${!r["Fecha Salida"] ? `<button class='registrarSalidaBtn bg-green-600 text-white px-3 py-1 rounded' data-id='${r.id}' data-dni='${r.DNI}'>Registrar salida</button>` : ''}</td>`;
+            let dominioVehiculo = '';
+            if (r["Vehiculo"]) {
+              try {
+                const v = JSON.parse(r["Vehiculo"]);
+                dominioVehiculo = v.Dominio || '';
+              } catch {}
+            }
+            tr.innerHTML = `<td class="p-2">${r.CUIT || ''}</td><td class="p-2">${r.DNI || ''}</td><td class="p-2">${r.Empresa || ''}</td><td class="p-2">${r["Tipo de trabajador"] || ''}</td><td class="p-2">${dominioVehiculo}</td><td class="p-2">${formatDateTime(r["Fecha Ingreso"])}<\/td><td class="p-2">${formatDateTime(r["Fecha Salida"])}<\/td><td class="p-2">${permanencia}<\/td><td class="p-2">${!r["Fecha Salida"] ? `<button class='registrarSalidaBtn bg-green-600 text-white px-3 py-1 rounded' data-id='${r.id}' data-dni='${r.DNI}'>Registrar salida<\/button>` : ''}<\/td>`;
             // Evento para registrar salida
             tr.querySelector('.registrarSalidaBtn')?.addEventListener('click', async function() {
               const id = this.getAttribute('data-id');
@@ -984,23 +991,24 @@ exportPdfBtn.addEventListener("click", function() {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('REPORTE DE INGRESOS', doc.internal.pageSize.getWidth() / 2, 24, { align: 'center' });
-  // Línea horizontal
   doc.setLineWidth(0.5);
   doc.line(20, 28, doc.internal.pageSize.getWidth() - 20, 28);
   doc.setFontSize(8);
   const table = reportTable;
   if (!table) return;
-  const headers = Array.from(table.querySelectorAll('tr')[0].children).map(th => th.textContent.trim());
-  const rows = Array.from(table.querySelectorAll('tr')).slice(1).map(tr => Array.from(tr.children).map(td => td.textContent.trim()));
-  const allRows = [headers, ...rows];
-  // Margen legal horizontal: ancho usable ~315 (legal: 355 - 2*20)
-  const colWidths = [35, 35, 60, 45, 55, 55, 30];
-  const totalWidth = colWidths.reduce((a,b)=>a+b,0);
-  const marginX = 20;
-  const startX = marginX;
+  const rows = Array.from(table.querySelectorAll('tr'));
+  if (rows.length < 2) {
+    alert('No hay datos para exportar');
+    return;
+  }
+  const headers = Array.from(rows[0].children).map(th => th.textContent.trim());
+  const dataRows = rows.slice(1).map(tr => Array.from(tr.children).map(td => td.textContent.trim()));
+  const allRows = [headers, ...dataRows];
+  // Ajuste de columnas para legal
+  const colWidths = Array(headers.length).fill(Math.floor((doc.internal.pageSize.getWidth()-40)/headers.length));
+  const startX = 20;
   let startY = 34;
   const cellHeight = 10;
-  // Dibujar tabla respetando márgenes y con letra pequeña
   allRows.forEach((row, i) => {
     let x = startX;
     row.forEach((cell, j) => {
@@ -1112,8 +1120,14 @@ async function showWorkerDetail(worker) {
       r = data[0];
     }
   }
+  let dominioVehiculo = '';
+  if (r["Vehiculo"]) {
+    try {
+      const v = JSON.parse(r["Vehiculo"]);
+      dominioVehiculo = v.Dominio || '';
+    } catch {}
+  }
   let html = `<div class='bg-white rounded-2xl shadow-lg p-6 max-w-2xl mx-auto'>`;
-  // Encabezado con icono y nombre
   html += `<div class='flex items-center gap-4 mb-6'>
     <div class='bg-indigo-100 rounded-full p-3'>
       <svg class='w-10 h-10 text-indigo-600' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.657 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z'></path></svg>
@@ -1123,12 +1137,14 @@ async function showWorkerDetail(worker) {
       <div class='text-sm text-gray-500'>${r.Empresa || ''}</div>
     </div>
   </div>`;
-  // Datos principales
   html += `<div class='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>`;
-  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M16 17v1a3 3 0 01-6 0v-1'></path></svg></span><span class='font-semibold text-gray-700'>DNI:</span> <span class='text-gray-900'>${r.DNI || ''}</span></div>`;
-  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6'></path></svg></span><span class='font-semibold text-gray-700'>CUIT:</span> <span class='text-gray-900'>${r.CUIT || ''}</span></div>`;
-  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M3 7v4a1 1 0 001 1h3m10-5h3a1 1 0 011 1v4a1 1 0 01-1 1h-3'></path></svg></span><span class='font-semibold text-gray-700'>Empresa:</span> <span class='text-gray-900'>${r.Empresa || ''}</span></div>`;
-  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M12 11c0-1.105.895-2 2-2s2 .895 2 2-.895 2-2 2-2-.895-2-2z'></path></svg></span><span class='font-semibold text-gray-700'>Tipo:</span> <span class='text-gray-900'>${r["Tipo de trabajador"] || r.tipo || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>DNI:</span> <span class='text-gray-900'>${r.DNI || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>CUIT:</span> <span class='text-gray-900'>${r.CUIT || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>Empresa:</span> <span class='text-gray-900'>${r.Empresa || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>Tipo de trabajador:</span> <span class='text-gray-900'>${r["Tipo de trabajador"] || r.tipo || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>Dominio vehículo:</span> <span class='text-gray-900'>${dominioVehiculo}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>Fecha ingreso:</span> <span class='text-gray-900'>${r["Fecha Ingreso"] ? new Date(r["Fecha Ingreso"]).toLocaleString() : ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>Fecha salida:</span> <span class='text-gray-900'>${r["Fecha Salida"] ? new Date(r["Fecha Salida"]).toLocaleString() : ''}</span></div>`;
   html += `</div>`;
   // Adjuntos
   if (r["DNI Adjunto"]) {
@@ -1151,8 +1167,49 @@ async function showWorkerDetail(worker) {
   if (r["Credencial PDF"]) {
     html += `<div class='mt-4'><a href='${r["Credencial PDF"]}' target='_blank' class='px-4 py-2 bg-indigo-600 text-white rounded font-semibold text-xs hover:bg-indigo-700 transition'>Ver Credencial PDF</a></div>`;
   }
+  html += `<div class='mt-6'><button id='exportFichaPdfBtn' class='bg-indigo-600 text-white px-4 py-2 rounded'>Exportar ficha en PDF</button></div>`;
   html += `</div>`;
   detailBody.innerHTML = html;
+  // Exportar ficha en PDF
+  setTimeout(() => {
+    const exportBtn = document.getElementById('exportFichaPdfBtn');
+    if (exportBtn) {
+      exportBtn.onclick = function() {
+        const doc = new window.jspdf.jsPDF({ orientation: 'portrait', format: 'a4' });
+        doc.setFontSize(16);
+        doc.text('Ficha de trabajador', 105, 20, { align: 'center' });
+        doc.setFontSize(10);
+        let y = 35;
+        doc.text(`DNI: ${r.DNI || ''}`, 20, y);
+        doc.text(`CUIT: ${r.CUIT || ''}`, 120, y);
+        y += 8;
+        doc.text(`Apellido y Nombre: ${r["Apellido y Nombre"] || r.nombre || r.DNI}`, 20, y);
+        y += 8;
+        doc.text(`Empresa: ${r.Empresa || ''}`, 20, y);
+        doc.text(`Tipo de trabajador: ${r["Tipo de trabajador"] || r.tipo || ''}`, 120, y);
+        y += 8;
+        doc.text(`Dominio vehículo: ${dominioVehiculo}`, 20, y);
+        y += 8;
+        doc.text(`Fecha ingreso: ${r["Fecha Ingreso"] ? new Date(r["Fecha Ingreso"]).toLocaleString() : ''}`, 20, y);
+        doc.text(`Fecha salida: ${r["Fecha Salida"] ? new Date(r["Fecha Salida"]).toLocaleString() : ''}`, 120, y);
+        y += 12;
+        doc.setFontSize(12);
+        doc.text('Adjuntos:', 20, y);
+        doc.setFontSize(9);
+        y += 6;
+        if (r["DNI Adjunto"]) {
+          try {
+            const adjuntos = JSON.parse(r["DNI Adjunto"]);
+            adjuntos.forEach(d => {
+              doc.text(`- ${d.label}${d.expiry ? ' (Vto: ' + d.expiry + ')' : ''}`, 25, y);
+              y += 6;
+            });
+          } catch {}
+        }
+        doc.save(`Ficha_${r.DNI || 'trabajador'}.pdf`);
+      };
+    }
+  }, 100);
 }
 closeDetailBtn.addEventListener('click', function() {
   workerDetail.classList.add('hidden');
