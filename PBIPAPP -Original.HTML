@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Gestión Documental Completa</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- jsPDF para informes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- pdf-lib para unir PDFs -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+
+  <!-- LOGIN -->
+  <div id="loginScreen" class="max-w-sm mx-auto p-6 bg-white rounded:\PYTHON\PROYECTOS PYTHON\PBIPAPP PYTHON\PBIPAPP - copia.HTMLd-2xl shadow-lg">
+    <h2 class="text-2xl font-bold text-center mb-4">Login</h2>
+    <input id="username" placeholder="Usuario" class="w-full p-2 border rounded mb-2" />
+    <input id="password" type="password" placeholder="Contraseña" class="w-full p-2 border rounded mb-4" />
+    <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded">Ingresar</button>
+    <p id="loginError" class="text-red-500 text-sm mt-2 hidden">Usuario o contraseña incorrectos</p>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="hidden max-w-6xl mx-auto space-y-6">
+
+    <!-- NAV -->
+    <nav class="flex items-center w-full">
+      <div class="flex items-center gap-3">
+        <!-- Logo PBIP APP (simple, inline SVG) -->
+        <div class="flex items-center gap-2">
+          <svg viewBox="0 0 64 64" class="w-10 h-10 rounded p-1 bg-indigo-600" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="6" y="6" width="52" height="52" rx="8" fill="#ffffff" opacity="0.06"/>
+            <rect x="10" y="10" width="44" height="44" rx="6" fill="#ffffff" opacity="0.08"/>
+            <g transform="translate(16,18)" fill="#ffffff">
+              <rect x="0" y="0" width="8" height="28" rx="2"/>
+              <rect x="12" y="6" width="8" height="22" rx="2"/>
+              <rect x="24" y="12" width="8" height="16" rx="2"/>
+            </g>
+          </svg>
+          <div class="text-lg font-semibold text-gray-800">
+            PBIP <span class="text-sm font-normal text-gray-600">APP</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 ml-6">
+        <button id="navForm" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded">Nuevo Ingreso</button>
+        <button id="navWorkers" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Trabajadores</button>
+        <button id="navCompanies" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Empresas</button>
+        <button id="navReport" type="button" class="px-4 py-2 bg-gray-200 rounded">Reporte Ingresos</button>
+        <button id="navCredencial" type="button" class="px-4 py-2 bg-gray-200 rounded">Generar Credencial</button>
+        <button id="navVehiculos" type="button" class="px-4 py-2 bg-gray-200 rounded">Vehículos</button>
+      </div>
+      <button id="logoutBtn" class="ml-auto px-4 py-2 bg-red-500 text-white rounded">Cerrar sesión</button>
+    </nav>
+
+    <!-- FORM SCREEN -->
+    <section id="formScreen" class="bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Ingreso Extraordinario</h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block mb-1">DNI</label>
+          <input id="dni" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block mb-1">CUIT</label>
+          <input id="cuit" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block mb-1">Empresa</label>
+          <input id="empresa" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block mb-1">Apellido y Nombre</label>
+          <input id="nombre" class="w-full p-2 border rounded" />
+        </div>
+        <div>
+          <!-- espacio reservado para futuras columnas o controles -->
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block mb-1">Tipo de trabajador</label>
+        <select id="workerType" class="w-64 p-2 border rounded">
+          <option value="">Seleccione...</option>
+          <option value="monotributista">Monotributista</option>
+          <option value="dependencia">Relación de Dependencia</option>
+          <option value="visita">Visita</option>
+          <option value="planta">Empleado de planta</option>
+        </select>
+      </div>
+
+      <!-- Documents slots -->
+      <div id="documentsSection" class="mt-4 space-y-3"></div>
+
+      <!-- Nueva sección para datos de vehículo (si corresponde) -->
+      <div class="mt-4">
+        <label class="block mb-1">Ingreso con vehículo</label>
+        <select id="vehiculoIngreso" class="w-64 p-2 border rounded">
+          <option value="">Seleccione...</option>
+          <option value="no">No</option>
+          <option value="si">Sí</option>
+        </select>
+      </div>
+      <div id="vehiculoForm" class="mt-4 hidden p-4 border rounded bg-gray-50 space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block mb-1">Dominio</label>
+            <input id="vehiculoDominio" class="w-full p-2 border rounded" />
+          </div>
+          <div>
+            <label class="block mb-1">Marca</label>
+            <div class="flex gap-2 items-center">
+              <select id="vehiculoMarca" class="w-full p-2 border rounded">
+                <option value="">Seleccione...</option>
+                <option value="Toyota">Toyota</option>
+                <option value="Ford">Ford</option>
+                <option value="Volkswagen">Volkswagen</option>
+                <option value="Renault">Renault</option>
+              </select>
+              <button type="button" id="addMarcaBtn" class="px-2 py-1 bg-gray-200 rounded text-xs">Agregar nuevo</button>
+            </div>
+            <input id="vehiculoMarcaOtro" class="w-full p-2 border rounded mt-2 hidden" placeholder="Ingrese nueva marca" />
+          </div>
+          <div>
+            <label class="block mb-1">Modelo</label>
+            <input id="vehiculoModelo" class="w-full p-2 border rounded" placeholder="Ej: 408, 206, Hilux, etc." />
+          </div>
+          <div>
+            <label class="block mb-1">Color</label>
+            <div class="flex gap-2 items-center">
+              <select id="vehiculoColor" class="w-full p-2 border rounded">
+                <option value="">Seleccione...</option>
+                <option value="Blanco">Blanco</option>
+                <option value="Negro">Negro</option>
+                <option value="Gris">Gris</option>
+                <option value="Rojo">Rojo</option>
+                <option value="Azul">Azul</option>
+              </select>
+              <button type="button" id="addColorBtn" class="px-2 py-1 bg-gray-200 rounded text-xs">Agregar nuevo</button>
+            </div>
+            <input id="vehiculoColorOtro" class="w-full p-2 border rounded mt-2 hidden" placeholder="Ingrese nuevo color" />
+          </div>
+          <div>
+            <label class="block mb-1">Año</label>
+            <div class="flex gap-2 items-center">
+              <select id="vehiculoAnio" class="w-full p-2 border rounded">
+                <option value="">Seleccione...</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+                <option value="2021">2021</option>
+                <option value="2020">2020</option>
+              </select>
+              <button type="button" id="addAnioBtn" class="px-2 py-1 bg-gray-200 rounded text-xs">Agregar nuevo</button>
+            </div>
+            <input id="vehiculoAnioOtro" class="w-full p-2 border rounded mt-2 hidden" placeholder="Ingrese nuevo año" />
+          </div>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <label class="block mb-1">Adjuntar PDF (documentación)</label>
+          <input type="file" id="vehiculoPdf" accept="application/pdf" class="hidden" />
+          <button id="vehiculoPdfBtn" class="px-3 py-1 bg-blue-600 text-white rounded">Elegir PDF</button>
+          <input type="date" id="vehiculoVencimiento" class="p-1 border rounded" />
+          <span id="vehiculoPdfStatus" class="ml-3 text-sm"></span>
+        </div>
+      </div>
+
+      <!-- Acciones del formulario -->
+      <div class="mt-4 flex gap-2">
+        <button id="saveBtn" class="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
+        <button id="clearFormBtn" class="bg-gray-300 px-4 py-2 rounded">Limpiar</button>
+      </div>
+
+    </section>
+
+    <!-- WORKERS SCREEN -->
+    <section id="workersScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Listado de Trabajadores</h3>
+      <div class="flex gap-2 mb-4">
+        <input id="searchDNI" placeholder="Buscar por DNI" class="p-2 border rounded" />
+        <input id="searchName" placeholder="Buscar por nombre" class="p-2 border rounded flex-1" />
+        <button id="refreshWorkers" class="bg-blue-600 text-white px-3 py-1 rounded">Refrescar</button>
+      </div>
+      <div class="overflow-auto">
+        <table class="w-full" id="workersTable">
+          <!-- filas generadas por JS -->
+        </table>
+      </div>
+    </section>
+
+    <!-- COMPANIES SCREEN -->
+    <section id="companiesScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Listado de Empresas</h3>
+
+     <div class="flex gap-2 mb-4">
+       <input id="filterCompanyCUIT" placeholder="Filtrar por CUIT" class="p-2 border rounded" />
+       <input id="filterCompanyName" placeholder="Buscar empresa" class="p-2 border rounded flex-1" />
+       <button id="refreshCompanies" class="bg-blue-600 text-white px-3 py-1 rounded">Refrescar</button>
+     </div>
+
+      <div id="companiesList" class="space-y-2"></div>
+    </section>
+
+    <!-- WORKER DETAIL -->
+    <section id="workerDetail" class="hidden bg-white p-6 rounded shadow">
+      <h3 id="detailTitle" class="text-xl font-bold mb-2">Ficha</h3>
+      <div id="detailBody" class="mt-4 space-y-3"></div>
+      <div class="mt-4 flex gap-2">
+        <button id="downloadReportBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Descargar Informe</button>
+        <button id="downloadAllBtn" class="bg-purple-600 text-white px-4 py-2 rounded">Descargar Documentos Unidos</button>
+        <button id="closeDetailBtn" class="bg-gray-300 px-4 py-2 rounded">Cerrar</button>
+      </div>
+    </section>
+
+    <!-- REPORT SCREEN (agregado) -->
+    <section id="reportScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Reporte de Ingresos</h3>
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4 items-end">
+        <div>
+          <label class="block text-sm">Desde</label>
+          <input id="reportStart" type="date" class="p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">Hasta</label>
+          <input id="reportEnd" type="date" class="p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">Empresa</label>
+          <input id="reportEmpresa" placeholder="Razón social" class="p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">CUIT</label>
+          <input id="reportCUIT" placeholder="CUIT" class="p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">DNI</label>
+          <input id="reportDNI" placeholder="DNI" class="p-2 border rounded" />
+        </div>
+        <div>
+          <label class="block text-sm">Apellido / Nombre</label>
+          <input id="reportName" placeholder="Apellido y/o nombre" class="p-2 border rounded" />
+        </div>
+      </div>
+      <div class="flex gap-2 mb-4">
+        <button id="reportRefresh" class="bg-blue-600 text-white px-3 py-1 rounded">Refrescar</button>
+        <button id="exportPdfBtn" class="bg-indigo-600 text-white px-3 py-1 rounded">Exportar PDF</button>
+        <button id="exportExcelBtn" class="bg-green-600 text-white px-3 py-1 rounded">Exportar Excel (CSV)</button>
+      </div>
+      <div class="overflow-auto">
+        <table class="w-full" id="reportTable">
+          <!-- filas generadas por JS -->
+        </table>
+      </div>
+    </section>
+
+    <!-- MODULO CREDENCIAL -->
+    <section id="credencialScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Generar Credencial de Trabajador</h3>
+      <div class="mb-4">
+        <label class="block mb-1">Buscar por DNI</label>
+        <input id="credencialDNI" class="w-64 p-2 border rounded" placeholder="Ingrese DNI" />
+        <button id="buscarTrabajadorBtn" class="ml-2 px-3 py-1 bg-blue-600 text-white rounded">Buscar</button>
+      </div>
+      <div id="credencialForm" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block mb-1">Apellido y Nombre</label>
+            <input id="credencialNombre" class="w-full p-2 border rounded bg-gray-100" readonly />
+          </div>
+          <div>
+            <label class="block mb-1">DNI</label>
+            <input id="credencialDNIShow" class="w-full p-2 border rounded bg-gray-100" readonly />
+          </div>
+          <div>
+            <label class="block mb-1">Empresa</label>
+            <input id="credencialEmpresa" class="w-full p-2 border rounded bg-gray-100" readonly />
+          </div>
+          <div>
+            <label class="block mb-1">Fotografía</label>
+            <input type="file" id="credencialFoto" accept="image/*" class="w-full p-2 border rounded" />
+            <img id="credencialFotoPreview" src="" alt="" class="mt-2 w-32 h-32 object-cover rounded border hidden" />
+          </div>
+          <div>
+            <label class="block mb-1">Autorización a Interfaz</label>
+            <select id="credencialInterfaz" class="w-full p-2 border rounded">
+              <option value="autorizado">Autorizado a Interfaz</option>
+              <option value="no_autorizado">No autorizado a Interfaz</option>
+            </select>
+          </div>
+        </div>
+        <button id="generarCredencialBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Generar PDF Credencial</button>
+      </div>
+    </section>
+
+    <!-- MODULO VEHICULOS -->
+    <section id="vehiculosScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Módulo Vehículos</h3>
+      <div class="mb-6 flex gap-4 items-center">
+        <input id="vehiculoBuscarDominio" class="w-64 p-2 border rounded" placeholder="Buscar por dominio..." />
+        <button id="buscarVehiculoBtn" class="px-3 py-1 bg-blue-600 text-white rounded">Buscar</button>
+        <button id="agregarVehiculoBtn" class="px-3 py-1 bg-green-600 text-white rounded">Agregar nuevo vehículo</button>
+      </div>
+      <div id="vehiculoDatos" class="mt-4"></div>
+    </section>
+
+    <!-- after NAV (insert console) -->
+    <div id="entryConsole" class="hidden max-w-6xl mx-auto mt-4 p-3 bg-white rounded shadow flex items-center gap-3">
+      <label class="text-sm font-medium">Control ingreso (DNI):</label>
+      <input id="checkDNIInput" placeholder="N° DNI" class="p-2 border rounded w-40" />
+      <button id="checkDNIBtn" class="bg-blue-600 text-white px-3 py-1 rounded">Verificar</button>
+      <div id="checkResult" class="ml-4 text-sm"></div>
+      <button id="registerEntryBtn" class="ml-auto bg-green-600 text-white px-3 py-1 rounded hidden">Registrar ingreso</button>
+    </div>
+
+  </div>
+  <script>
+    // Mostrar login al cargar la página
+window.addEventListener('DOMContentLoaded', function() {
+  const loginScreen = document.getElementById('loginScreen');
+  const app = document.getElementById('app');
+  if (loginScreen) loginScreen.classList.remove('hidden');
+  if (app) app.classList.add('hidden');
+});
+
+    // ---------- Helpers de almacenamiento ----------
+    console.debug('script loaded');
+    const STORAGE_KEY = "gd_records_v1"; // cambiar versión si actualizas estructura
+
+    // Mensajes de runtime visibles en UI para debugging (temporal)
+    // se crea aquí para que esté disponible incluso si hay errores tempranos
+    try {
+      const _rMsg = document.createElement('div');
+      _rMsg.id = 'runtimeMsg';
+      _rMsg.className = 'fixed top-4 right-4 p-3 bg-yellow-100 text-black rounded shadow hidden';
+      document.body.appendChild(_rMsg);
+    } catch (e) { console.warn('no pudo crear runtimeMsg', e); }
+
+    window.addEventListener('error', (ev) => {
+      try {
+        console.error('Unhandled error', ev.error || ev.message || ev);
+        const el = document.getElementById('runtimeMsg');
+        if (el) { el.textContent = 'Error JS: ' + (ev.error?.message || ev.message || ev); safeRemove(el, 'hidden'); }
+        alert('Error JS: ' + (ev.error?.message || ev.message || ev));
+      } catch (e) { console.error(e); }
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      console.error('Unhandled promise rejection', ev.reason);
+      const el = document.getElementById('runtimeMsg');
+      if (el) { el.textContent = 'Unhandled promise rejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : ev.reason); safeRemove(el, 'hidden'); }
+    });
+    function loadRecords() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch (e) {
+        console.error(e);
+        return [];
+      }
+    }
+    function saveRecords(recs) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(recs));
+    }
+
+    // Convierte ArrayBuffer a base64
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+    // Convierte base64 a Uint8Array
+    function base64ToUint8Array(base64) {
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    // ---------- Datos y documentos por defecto ----------
+    const docsBase = [
+      { key: "DNI", label: "DNI" },
+      { key: "EPP", label: "Entrega de EPP" },
+      { key: "CARNET_PREFECTURA", label: "Carnet de Prefectura" },
+      { key: "MAIL_AGENCIA", label: "Mail de la agencia", noExpiry: true }
+    ];
+    const docsMono = [
+      { key: "ARCA_INSCRIP", label: "Constancia de inscripción ante ARCA" },
+      { key: "PAGO_MONOT", label: "Pago de Monotributo" },
+      { key: "POLIZA_ACC", label: "Póliza de Accidentes Personales" },
+      { key: "LIBRE_DEUDA_POL", label: "Libre deuda Póliza de Acc. Personales" }
+    ];
+    const docsDep = [
+      { key: "ALTA_ARCA", label: "Alta temprana ante ARCA" },
+      { key: "CONST_ART", label: "Constancia de Aseguramiento ante la ART" }
+    ];
+
+    // ---------- Estado en memoria ----------
+    let records = loadRecords(); // array de {empresa,nombre,dni,tipo, documents: [ {key,label,fileName,base64,expiry}]}
+    let selectedWorkerIndex = null;
+
+    // ---------- Elementos DOM ----------
+    const loginScreen = document.getElementById("loginScreen");
+    const app = document.getElementById("app");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const loginError = document.getElementById("loginError");
+
+    // Helpers seguros para manipular classList cuando el elemento puede ser null
+    function safeAdd(el, cls) { try { if (el && el.classList) el.classList.add(cls); } catch(e){} }
+    function safeRemove(el, cls) { try { if (el && el.classList) el.classList.remove(cls); } catch(e){} }
+
+    const navForm = document.getElementById("navForm");
+    const navWorkers = document.getElementById("navWorkers");
+    const navCompanies = document.getElementById("navCompanies");
+    const navReport = document.getElementById("navReport");
+    const navCredencial = document.getElementById("navCredencial");
+    const navVehiculos = document.getElementById("navVehiculos");
+    const entryConsole = document.getElementById("entryConsole");
+
+    const formScreen = document.getElementById("formScreen");
+    const cuitInput = document.getElementById("cuit");
+    const empresaInput = document.getElementById("empresa");
+    const nombreInput = document.getElementById("nombre");
+    const dniInput = document.getElementById("dni");
+    const workerTypeSelect = document.getElementById("workerType");
+    const documentsSection = document.getElementById("documentsSection");
+    const saveBtn = document.getElementById("saveBtn");
+    const clearFormBtn = document.getElementById("clearFormBtn");
+
+    const workersScreen = document.getElementById("workersScreen");
+    const workersTable = document.getElementById("workersTable");
+    const searchDNI = document.getElementById("searchDNI");
+    const searchName = document.getElementById("searchName");
+    const refreshWorkers = document.getElementById("refreshWorkers");
+
+    const companiesScreen = document.getElementById("companiesScreen");
+    const companiesList = document.getElementById("companiesList");
+
+    const workerDetail = document.getElementById("workerDetail");
+    const detailBody = document.getElementById("detailBody");
+    const detailTitle = document.getElementById("detailTitle");
+    const downloadReportBtn = document.getElementById("downloadReportBtn");
+    const downloadAllBtn = document.getElementById("downloadAllBtn");
+    const closeDetailBtn = document.getElementById("closeDetailBtn");
+
+    const reportScreen = document.getElementById("reportScreen");
+    const reportStart = document.getElementById("reportStart");
+    const reportEnd = document.getElementById("reportEnd");
+    const reportEmpresa = document.getElementById("reportEmpresa");
+    const reportCUIT = document.getElementById("reportCUIT");
+    const reportDNI = document.getElementById("reportDNI");
+    const reportName = document.getElementById("reportName");
+    const reportRefresh = document.getElementById("reportRefresh");
+    const exportPdfBtn = document.getElementById("exportPdfBtn");
+    const exportExcelBtn = document.getElementById("exportExcelBtn");
+    const reportTable = document.getElementById("reportTable");
+
+    // Centralizo la definición de SUPABASE_URL y SUPABASE_KEY al inicio del script para evitar inconsistencias
+const SUPABASE_URL = 'https://yojnidvstcsrlclarpsa.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlvam5pZHZzdGNzcmxjbGFycHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4MDI1NjUsImV4cCI6MjA3MzM3ODU2NX0.spZcQsqSehQpRMZOmaAQrXYVlLxg8SDcq7_Whp62z-k';
+
+    // ---------- Login ----------
+    loginBtn.addEventListener("click", () => {
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+      // modo debug: aceptar cualquier credencial no vacía para facilitar pruebas
+      if ((u === "1" && p === "1") || (u && p)) {
+        safeAdd(loginScreen, "hidden");
+        safeRemove(app, "hidden");
+        showReport();
+      } else {
+        safeRemove(loginError, "hidden");
+      }
+    });
+    logoutBtn.addEventListener("click", () => {
+      // refrescar sesión a login (sin limpiar datos)
+      safeAdd(app, "hidden");
+      safeRemove(loginScreen, "hidden");
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+    });
+
+    // ---------- Navegación ----------
+    if (navForm) navForm.addEventListener("click", (ev) => { showForm(); });
+    if (navWorkers) navWorkers.addEventListener("click", (ev) => { showWorkers(); });
+    if (navCompanies) navCompanies.addEventListener("click", (ev) => { showCompanies(); });
+    if (navReport) navReport.addEventListener("click", () => showReport());
+    if (navCredencial) navCredencial.addEventListener("click", () => {
+  hideAllScreens();
+  credencialScreen.classList.remove("hidden");
+});
+    if (navVehiculos) navVehiculos.addEventListener("click", () => {
+  hideAllScreens();
+  vehiculosScreen.classList.remove("hidden");
+});
+
+    function hideAllScreens() {
+      safeAdd(formScreen, "hidden");
+      safeAdd(workersScreen, "hidden");
+      safeAdd(companiesScreen, "hidden");
+      safeAdd(workerDetail, "hidden");
+      safeAdd(reportScreen, "hidden");
+      safeAdd(credencialScreen, "hidden");
+      safeAdd(vehiculosScreen, "hidden");
+    }
+
+    // ---------- Mostrar/ocultar el formulario de vehículo según selección ----------
+const vehiculoIngreso = document.getElementById("vehiculoIngreso");
+const vehiculoForm = document.getElementById("vehiculoForm");
+if (vehiculoIngreso && vehiculoForm) {
+  vehiculoIngreso.addEventListener("change", function() {
+    if (vehiculoIngreso.value === "si") {
+      vehiculoForm.style.display = "block";
+      vehiculoForm.classList.remove("hidden");
+    } else {
+      vehiculoForm.style.display = "none";
+      vehiculoForm.classList.add("hidden");
+    }
+  });
+  // Inicialmente oculto
+  vehiculoForm.style.display = "none";
+}
+
+    // ---------- Renderizar slots de documentos según tipo ----------
+    function renderDocumentSlots() {
+      documentsSection.innerHTML = "";
+      let tipo = workerTypeSelect.value;
+      if (tipo === "visita") {
+        // Solo mostrar campo responsable de la visita
+        documentsSection.innerHTML = `<div class='mb-4'><label class='block font-semibold mb-1'>Responsable de la visita</label><input id='responsableVisita' class='w-full p-2 border rounded' placeholder='Nombre del responsable' /></div>`;
+        return;
+      }
+      if (tipo === "planta") {
+        documentsSection.innerHTML = `<div class='p-3 border rounded flex flex-col md:flex-row md:items-center md:justify-between gap-2'>
+          <div class='flex-1'>
+            <div class='font-semibold'>Carnet de conducir - Copia en PDF</div>
+            <div class='text-xs text-gray-600'>Subir PDF y seleccionar fecha de vencimiento</div>
+          </div>
+          <div class='flex items-center gap-2'>
+            <input type='file' accept='application/pdf' data-doc-key='CARNET_CONDUCIR' class='doc-file hidden' />
+            <button class='uploadBtn px-3 py-1 bg-blue-600 text-white rounded'>Elegir PDF</button>
+            <input type='date' class='vencimiento p-1 border rounded' />
+            <div class='status ml-3 text-sm'></div>
+          </div>
+        </div>`;
+        // Mantengo los datos de ingreso con vehículo visibles
+        vehiculoForm.parentElement.style.display = "block";
+        return;
+      }
+      let list = [...docsBase];
+      if (tipo === "monotributista") list.push(...docsMono);
+      if (tipo === "dependencia") list.push(...docsDep);
+
+      list.forEach(doc => {
+        const div = document.createElement("div");
+        div.className = "p-3 border rounded flex flex-col md:flex-row md:items-center md:justify-between gap-2";
+        div.innerHTML = `
+          <div class="flex-1">
+            <div class="font-semibold">${doc.label}</div>
+            <div class="text-xs text-gray-600">${doc.noExpiry ? "Adjuntar PDF del mail recibido" : "Subir PDF y seleccionar fecha de vencimiento (opcional)"}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="file" accept="application/pdf" data-doc-key="${doc.key}" class="doc-file hidden" />
+            <button class="uploadBtn px-3 py-1 bg-blue-600 text-white rounded">Elegir PDF</button>
+            ${!doc.noExpiry ? '<input type="date" class="vencimiento p-1 border rounded" />' : ''}
+            <div class="status ml-3 text-sm"></div>
+          </div>
+        `;
+        documentsSection.appendChild(div);
+
+        const fileInput = div.querySelector(".doc-file");
+        const uploadBtn = div.querySelector(".uploadBtn");
+        const vencInput = div.querySelector(".vencimiento");
+        const status = div.querySelector(".status");
+
+        // Set default date to today
+        if (vencInput) {
+          const today = new Date().toISOString().split("T")[0];
+          vencInput.value = today;
+        }
+
+        uploadBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", async (ev) => {
+          const f = ev.target.files[0];
+          if (!f) return;
+          if (f.type !== "application/pdf") {
+            alert("Solo se permiten archivos PDF");
+            fileInput.value = "";
+            return;
+          }
+          const ab = await f.arrayBuffer();
+          const base64 = arrayBufferToBase64(ab);
+          // marcar temporalmente en el UI (se guardará en guardar registro)
+          uploadBtn.textContent = f.name;
+          uploadBtn.title = f.name;
+          uploadBtn.dataset.fileName = f.name;
+          uploadBtn.dataset.base64 = base64;
+          uploadBtn.dataset.key = doc.key;
+        });
+
+        // control de vencimiento visual
+        if (vencInput) {
+          vencInput.addEventListener("change", () => {
+            const today = new Date().toISOString().split("T")[0];
+            if (!vencInput.value) {
+              status.textContent = "";
+              status.className = "status ml-3 text-sm";
+              return;
+            }
+            if (vencInput.value < today) {
+              status.textContent = "Vencido";
+              status.className = "status ml-3 text-sm text-red-600 font-semibold";
+            } else {
+              status.textContent = "Vigente";
+              status.className = "status ml-3 text-sm text-green-600 font-semibold";
+            }
+          });
+        }
+      });
+    }
+
+    workerTypeSelect.addEventListener("change", renderDocumentSlots);
+
+    // ---------- Guardar trabajador ----------
+    saveBtn.addEventListener("click", () => {
+      const cuit = cuitInput ? cuitInput.value.trim() : "";
+      const empresa = empresaInput.value.trim();
+      const nombre = nombreInput.value.trim();
+      const dni = dniInput.value.trim();
+      const tipo = workerTypeSelect.value;
+
+      if (!empresa || !nombre || !dni || !tipo) {
+        alert("Complete todos los campos obligatorios");
+        return;
+      }
+
+      // Recolectar documentos cargados en UI
+      const docDivs = documentsSection.querySelectorAll("div");
+      const documents = [];
+      docDivs.forEach(div => {
+        const uploadBtn = div.querySelector(".uploadBtn");
+        const vencInput = div.querySelector(".vencimiento");
+        const labelEl = div.querySelector(".font-semibold");
+        const label = labelEl ? labelEl.textContent : 'Documento';
+        const hasFile = uploadBtn && uploadBtn.dataset && uploadBtn.dataset.base64;
+        if (hasFile) {
+          documents.push({
+            key: (uploadBtn.dataset && uploadBtn.dataset.key) || "",
+            label,
+            fileName: (uploadBtn.dataset && uploadBtn.dataset.fileName) || "archivo.pdf",
+            base64: uploadBtn.dataset.base64,
+            expiry: vencInput ? (vencInput.value || null) : null
+          });
+        } else if (vencInput && vencInput.value) {
+          // guardar slot con fecha aunque no tenga archivo
+          const key = (uploadBtn && uploadBtn.dataset && uploadBtn.dataset.key) || "";
+          documents.push({
+            key,
+            label,
+            fileName: null,
+            base64: null,
+            expiry: vencInput.value
+          });
+        }
+      });
+
+      // Recolectar datos del vehículo si corresponde
+      let vehiculoData = null;
+      if (vehiculoIngreso && vehiculoIngreso.value === "si") {
+        vehiculoData = {
+          Dominio: document.getElementById("vehiculoDominio").value.trim(),
+          Marca: !document.getElementById("vehiculoMarcaOtro").classList.contains('hidden') ? document.getElementById("vehiculoMarcaOtro").value.trim() : document.getElementById("vehiculoMarca").value,
+          Modelo: !document.getElementById("vehiculoModeloOtro").classList.contains('hidden') ? document.getElementById("vehiculoModeloOtro").value.trim() : document.getElementById("vehiculoModelo").value,
+          Color: !document.getElementById("vehiculoColorOtro").classList.contains('hidden') ? document.getElementById("vehiculoColorOtro").value.trim() : document.getElementById("vehiculoColor").value,
+          Anio: !document.getElementById("vehiculoAnioOtro").classList.contains('hidden') ? document.getElementById("vehiculoAnioOtro").value.trim() : document.getElementById("vehiculoAnio").value,
+          PdfFileName: vehiculoPdfBtn && vehiculoPdfBtn.dataset.fileName ? vehiculoPdfBtn.dataset.fileName : null,
+          PdfBase64: vehiculoPdfBtn && vehiculoPdfBtn.dataset.base64 ? vehiculoPdfBtn.dataset.base64 : null,
+          Vencimiento: vehiculoVencimiento && vehiculoVencimiento.value ? vehiculoVencimiento.value : null
+        };
+      }
+
+      // Subir PDFs a Supabase Storage y guardar enlaces
+      if (window.supabase && window.supabase.createClient) {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        (async () => {
+          try {
+            let cuitValue = cuit === "" ? null : Number(cuit);
+            if (cuitValue !== null && isNaN(cuitValue)) {
+              alert('CUIT debe ser numérico');
+              return;
+            }
+            // Subir PDFs a Storage y recolectar URLs
+            const urlsAdjuntos = [];
+            for (const doc of documents.filter(d => d.base64)) {
+              const fileName = `${dni}_${doc.key}_${Date.now()}.pdf`;
+              const fileData = Uint8Array.from(atob(doc.base64), c => c.charCodeAt(0));
+              const { data, error } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
+                contentType: 'application/pdf',
+                upsert: true
+              });
+              if (error) {
+                alert(`Error subiendo ${doc.label}: ${error.message || error}`);
+                continue;
+              }
+              const url = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
+              urlsAdjuntos.push({ key: doc.key, label: doc.label, url, expiry: doc.expiry });
+            }
+            // Subir PDF de vehículo si corresponde
+            let vehiculoPdfUrl = null;
+            if (vehiculoData && vehiculoData.PdfBase64) {
+              const fileName = `${dni}_VEHICULO_${Date.now()}.pdf`;
+              const fileData = Uint8Array.from(atob(vehiculoData.PdfBase64), c => c.charCodeAt(0));
+              const { data: vehData, error: vehError } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
+                contentType: 'application/pdf',
+                upsert: true
+              });
+              if (!vehError) {
+                vehiculoPdfUrl = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
+              }
+            }
+            // Insertar registro en la tabla con enlaces y fecha/hora de ingreso
+            const fechaIngreso = new Date().toISOString();
+            const { data: insertData, error: insertError } = await supabase.from('Nuevo Ingreso').insert([
+              {
+                CUIT: cuitValue,
+                Empresa: empresa,
+                DNI: dni,
+                "Apellido y Nombre": nombre,
+                "Tipo de trabajador": tipo,
+                "DNI Adjunto": JSON.stringify(urlsAdjuntos),
+                "Fecha Ingreso": fechaIngreso,
+                "Vehiculo": vehiculoData ? JSON.stringify({ ...vehiculoData, PdfUrl: vehiculoPdfUrl }) : null
+              }
+            ]);
+            if (insertError) {
+              alert('Error al guardar en Supabase: ' + (insertError.message || insertError));
+              return;
+            }
+            alert('Registro guardado en Supabase con adjuntos');
+            clearForm();
+          } catch (e) {
+            alert('Error inesperado: ' + (e.message || e));
+          }
+        })();
+      } else {
+        alert('Supabase no está inicializado. Intente recargar la página.');
+      }
+    });
+
+    clearFormBtn.addEventListener("click", clearForm);
+
+    function clearForm() {
+      if (cuitInput) cuitInput.value = "";
+      empresaInput.value = "";
+      nombreInput.value = "";
+      dniInput.value = "";
+      workerTypeSelect.value = "";
+      documentsSection.innerHTML = "";
+      // Ocultar formulario de vehículo
+      vehiculoIngreso.value = "";
+      vehiculoForm.classList.add("hidden");
+      document.getElementById("vehiculoDominio").value = "";
+      document.getElementById("vehiculoMarca").value = "";
+      document.getElementById("vehiculoModelo").value = "";
+      document.getElementById("vehiculoColor").value = "";
+      document.getElementById("vehiculoAnio").value = "";
+      vehiculoPdfBtn.dataset.fileName = "";
+      vehiculoPdfBtn.dataset.base64 = "";
+      vehiculoPdfStatus.textContent = "";
+      vehiculoVencimiento.value = "";
+    }
+
+    // ---------- Listado de trabajadores ----------
+    function showWorkers() {
+      hideAllScreens();
+      renderWorkersTable();
+      workersScreen.classList.remove("hidden");
+    }
+
+    function renderWorkersTable() {
+      workersTable.innerHTML = "";
+      // Agregar encabezado
+      const thead = document.createElement("tr");
+      thead.className = "font-semibold border-b";
+      thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td><td class='p-2'>Adjuntos</td>`;
+      workersTable.appendChild(thead);
+      const dniQ = searchDNI.value.trim();
+      // Leer registros desde Supabase
+      if (window.supabase && window.supabase.createClient) {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        (async () => {
+          const { data, error } = await supabase.from('Nuevo Ingreso').select('*');
+          if (error) {
+            workersTable.innerHTML = `<tr><td colspan='6' class='text-red-600 p-2'>Error leyendo registros de Supabase: ${error.message}</td></tr>`;
+            return;
+          }
+          if (!data || !data.length) {
+            workersTable.innerHTML = `<tr><td colspan='6' class='text-gray-500 p-2'>No hay registros</td></tr>`;
+            return;
+          }
+          data.forEach((r, i) => {
+            console.log('Registro:', r); // Log para depuración
+            if (dniQ && !(r.DNI && r.DNI.includes(dniQ))) return;
+            const tr = document.createElement("tr");
+            if (r["DNI Adjunto"]) {
+              try {
+                const adjuntos = JSON.parse(r["DNI Adjunto"]);
+                docsHtml = adjuntos.map(d => `
+                  <div class='text-xs flex items-center gap-2'>
+                    <a href='${d.url}' target='_blank' class='text-blue-600 underline'>${d.label}</a>
+                    ${d.expiry ? `<span class='text-gray-600'>(Vto: ${d.expiry})</span>` : ''}
+                    <a href='${d.url}' target='_blank' class='px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold'>Previsualizar</a>
+                  </div>
+                `).join("");
+              } catch {}
+            }
+            tr.innerHTML = `
+              <td class="p-2 cursor-pointer text-blue-700 underline worker-dni">${r.DNI || ''}</td>
+              <td class="p-2">${r["Apellido y Nombre"] || ''}</td>
+              <td class="p-2">${r.Empresa || ''}</td>
+              <td class="p-2">${r.CUIT || ''}</td>
+              <td class="p-2">${docsHtml}</td>
+            `;
+            // Evento para mostrar ficha al hacer click en DNI
+            tr.querySelector('.worker-dni').addEventListener('click', function() {
+              showWorkerDetail(r);
+            });
+            workersTable.appendChild(tr);
+          });
+        })();
+      }
+    }
+
+    refreshWorkers.addEventListener("click", renderWorkersTable);
+    searchDNI.addEventListener("input", renderWorkersTable);
+    searchName.addEventListener("input", renderWorkersTable);
+
+    // ---------- Companies ----------
+    function showCompanies() {
+      hideAllScreens();
+      companiesScreen.classList.remove("hidden");
+      renderCompanies();
+    }
+    function renderCompanies() {
+      companiesList.innerHTML = "";
+      if (window.supabase && window.supabase.createClient) {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        (async () => {
+          const { data, error } = await supabase.from('Nuevo Ingreso').select('Empresa,CUIT,DNI,"DNI Adjunto"');
+          if (error) {
+            companiesList.innerHTML = `<div class='text-red-600 p-2'>Error leyendo empresas de Supabase: ${error.message}</div>`;
+            return;
+          }
+          if (!data || !data.length) {
+            companiesList.innerHTML = `<div class='text-gray-500 p-2'>No hay empresas</div>`;
+            return;
+          }
+          // Agrupar por empresa
+          const map = {};
+          data.forEach(r => {
+            if (!r.Empresa) return;
+            if (!map[r.Empresa]) map[r.Empresa] = [];
+            map[r.Empresa].push(r);
+          });
+          Object.keys(map).forEach(emp => {
+            const div = document.createElement("div");
+            div.className = "p-3 border rounded flex justify-between items-center";
+            div.innerHTML = `<div><div class=\"font-semibold\">${emp}</div><div class=\"text-sm text-gray-600\">${map[emp].length} ingresos</div></div>
+                         <div><button class=\"viewCompanyBtn bg-blue-600 text-white px-3 py-1 rounded\">Ver ingresos</button></div>`;
+            companiesList.appendChild(div);
+            div.querySelector(".viewCompanyBtn").addEventListener("click", () => {
+              workersTable.innerHTML = "";
+              // Agregar encabezado
+              const thead = document.createElement("tr");
+              thead.className = "font-semibold border-b";
+              thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td><td class='p-2'>Adjuntos</td>`;
+              workersTable.appendChild(thead);
+              map[emp].forEach(r => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b";
+                let docsHtml = "<div class='text-xs text-gray-500'>Sin adjuntos</div>";
+                if (r["DNI Adjunto"]) {
+                  try {
+                    const adjuntos = JSON.parse(r["DNI Adjunto"]);
+                    docsHtml = adjuntos.map(d => `
+                      <div class='text-xs flex items-center gap-2'>
+                        <a href='${d.url}' target='_blank' class='text-blue-600 underline'>${d.label}</a>
+                        ${d.expiry ? `<span class='text-gray-600'>(Vto: ${d.expiry})</span>` : ''}
+                        <a href='${d.url}' target='_blank' class='px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold'>Previsualizar</a>
+                      </div>
+                    `).join("");
+                  } catch {}
+                }
+                tr.innerHTML = `<td class='p-2'>${r.DNI}</td><td class='p-2'>${r.Empresa}</td><td class='p-2'>${r.CUIT}</td><td class='p-2'>${docsHtml}</td>`;
+                workersTable.appendChild(tr);
+              });
+              // Mantener la pantalla de trabajadores visible
+              safeAdd(formScreen, "hidden");
+              safeAdd(companiesScreen, "hidden");
+              safeAdd(workerDetail, "hidden");
+              safeAdd(reportScreen, "hidden");
+              safeAdd(entryConsole, "hidden");
+              workersScreen.classList.remove("hidden");
+            });
+          });
+        })();
+      }
+    }
+
+    // ---------- Reporte ----------
+    function showReport() {
+      hideAllScreens();
+      reportScreen.classList.remove("hidden");
+      renderReportTable();
+    }
+    function renderReportTable() {
+      if (!reportTable) return;
+      reportTable.innerHTML = "";
+      const empresaQ = (reportEmpresa && reportEmpresa.value || "").trim().toLowerCase();
+      const cuitQ = (reportCUIT && reportCUIT.value || "").trim();
+      const dniQ = (reportDNI && reportDNI.value || "").trim();
+      // header
+      const thead = document.createElement("tr");
+      thead.className = "font-semibold border-b";
+      thead.innerHTML = `<td class="p-2">CUIT</td><td class="p-2">DNI</td><td class="p-2">Empresa</td><td class="p-2">Tipo de trabajador</td><td class="p-2">Fecha Ingreso</td><td class="p-2">Fecha Salida</td><td class="p-2">Permanencia</td><td class="p-2">Acción</td>`;
+      reportTable.appendChild(thead);
+      // Leer registros desde Supabase
+      if (window.supabase && window.supabase.createClient) {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        (async () => {
+          const hoy = new Date();
+          const yyyy = hoy.getFullYear();
+          const mm = String(hoy.getMonth()+1).padStart(2,'0');
+          const dd = String(hoy.getDate()).padStart(2,'0');
+          const fechaHoy = `${yyyy}-${mm}-${dd}`;
+          const { data, error } = await supabase.from('Nuevo Ingreso').select('*');
+          if (error) {
+            reportTable.innerHTML += `<tr><td colspan='8' class='text-red-600 p-2'>Error leyendo registros de Supabase: ${error.message}</td></tr>`;
+            return;
+          }
+          if (!data || !data.length) {
+            reportTable.innerHTML += `<tr><td colspan='8' class='text-gray-500 p-2'>No hay registros</td></tr>`;
+            return;
+          }
+          data.forEach(r => {
+            if (empresaQ && !(r.Empresa && r.Empresa.toLowerCase().includes(empresaQ))) return;
+            if (cuitQ && !(r.CUIT && String(r.CUIT).includes(cuitQ))) return;
+            if (dniQ && !(r.DNI && String(r.DNI).includes(dniQ))) return;
+            // Filtrar: mostrar los del día de hoy o los de días anteriores sin salida
+            if (!r["Fecha Ingreso"]) return;
+            const fechaIngreso = new Date(r["Fecha Ingreso"]);
+            const fechaIngresoStr = `${fechaIngreso.getFullYear()}-${String(fechaIngreso.getMonth()+1).padStart(2,'0')}-${String(fechaIngreso.getDate()).padStart(2,'0')}`;
+            const esHoy = fechaIngresoStr === fechaHoy;
+            const sinSalida = !r["Fecha Salida"];
+            if (!(esHoy || (!esHoy && sinSalida))) return;
+            let permanencia = '';
+            if (r["Fecha Ingreso"] && r["Fecha Salida"]) {
+              const salida = new Date(r["Fecha Salida"]);
+              const diffMs = salida - fechaIngreso;
+              const diffMin = Math.round(diffMs / 60000);
+              permanencia = diffMin + ' min';
+            }
+            const formatDateTime = dt => {
+              if (!dt) return '';
+              const d = new Date(dt);
+              return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+            };
+            const tr = document.createElement("tr");
+            tr.className = "border-b";
+            tr.innerHTML = `<td class="p-2">${r.CUIT || ''}</td><td class="p-2">${r.DNI || ''}</td><td class="p-2">${r.Empresa || ''}</td><td class="p-2">${r["Tipo de trabajador"] || ''}</td><td class="p-2">${formatDateTime(r["Fecha Ingreso"])}</td><td class="p-2">${formatDateTime(r["Fecha Salida"])}</td><td class="p-2">${permanencia}</td><td class="p-2">${!r["Fecha Salida"] ? `<button class='registrarSalidaBtn bg-green-600 text-white px-3 py-1 rounded' data-id='${r.id}' data-dni='${r.DNI}'>Registrar salida</button>` : ''}</td>`;
+            // Evento para registrar salida
+            tr.querySelector('.registrarSalidaBtn')?.addEventListener('click', async function() {
+              const id = this.getAttribute('data-id');
+              const dni = this.getAttribute('data-dni');
+              const fechaSalida = new Date().toISOString();
+              const { error: updateError } = await supabase.from('Nuevo Ingreso').update({ "Fecha Salida": fechaSalida }).eq('id', id);
+              if (updateError) {
+                alert('Error al registrar salida: ' + (updateError.message || updateError));
+                return;
+              }
+              alert('Salida registrada correctamente');
+              renderReportTable();
+            });
+            reportTable.appendChild(tr);
+          });
+        })();
+      }
+    }
+
+    // Exportar reporte a PDF y Excel (CSV)
+exportPdfBtn.addEventListener("click", function() {
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape', format: 'legal' });
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PBIP APP', doc.internal.pageSize.getWidth() / 2, 16, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('REPORTE DE INGRESOS', doc.internal.pageSize.getWidth() / 2, 24, { align: 'center' });
+  // Línea horizontal
+  doc.setLineWidth(0.5);
+  doc.line(20, 28, doc.internal.pageSize.getWidth() - 20, 28);
+  doc.setFontSize(8);
+  const table = reportTable;
+  if (!table) return;
+  const headers = Array.from(table.querySelectorAll('tr')[0].children).map(th => th.textContent.trim());
+  const rows = Array.from(table.querySelectorAll('tr')).slice(1).map(tr => Array.from(tr.children).map(td => td.textContent.trim()));
+  const allRows = [headers, ...rows];
+  // Margen legal horizontal: ancho usable ~315 (legal: 355 - 2*20)
+  const colWidths = [35, 35, 60, 45, 55, 55, 30];
+  const totalWidth = colWidths.reduce((a,b)=>a+b,0);
+  const marginX = 20;
+  const startX = marginX;
+  let startY = 34;
+  const cellHeight = 10;
+  // Dibujar tabla respetando márgenes y con letra pequeña
+  allRows.forEach((row, i) => {
+    let x = startX;
+    row.forEach((cell, j) => {
+      doc.rect(x, startY + i * cellHeight, colWidths[j], cellHeight);
+      let text = doc.splitTextToSize(cell, colWidths[j] - 4);
+      doc.text(text, x + 2, startY + i * cellHeight + 7);
+      x += colWidths[j];
+    });
+  });
+  doc.save('ReporteIngresos.pdf');
+});
+
+exportExcelBtn.addEventListener("click", function() {
+  let csv = '';
+  const table = reportTable;
+  if (!table) return;
+  const headers = Array.from(table.querySelectorAll('tr')[0].children).map(th => th.textContent.trim());
+  csv += headers.join(',') + '\n';
+  Array.from(table.querySelectorAll('tr')).slice(1).forEach(tr => {
+    const cols = Array.from(tr.children).map(td => '"' + td.textContent.trim().replace(/"/g, '""') + '"');
+    csv += cols.join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'ReporteIngresos.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+    // Actualizar autocompletar por DNI en formulario para leer desde Supabase
+    dniInput.addEventListener("blur", () => {
+      const v = dniInput.value.trim();
+      if (!v) return;
+      if (window.supabase && window.supabase.createClient) {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        (async () => {
+          const { data, error } = await supabase.from('Nuevo Ingreso').select('*').eq('DNI', v);
+          if (error || !data || !data.length) return;
+          const found = data[0];
+          if (found) {
+            if (confirm("Trabajador existente — ¿cargar datos registrados?")) {
+              cuitInput.value = found.CUIT || "";
+              empresaInput.value = found.Empresa || "";
+              nombreInput.value = found["Apellido y Nombre"] || "";
+              workerTypeSelect.value = found["Tipo de trabajador"] || "";
+              renderDocumentSlots();
+              // Permitir modificar CUIT y Empresa
+              cuitInput.removeAttribute("readonly");
+              empresaInput.removeAttribute("readonly");
+              setTimeout(() => {
+                const divs = documentsSection.querySelectorAll("div");
+                divs.forEach(div => {
+                  const labelEl = div.querySelector(".font-semibold");
+                  const label = labelEl ? labelEl.textContent : '';
+                  const uploadBtn = div.querySelector(".uploadBtn");
+                  const vencInput = div.querySelector(".vencimiento");
+                  let doc = null;
+                  if (found["DNI Adjunto"]) {
+                    try {
+                      const adjuntos = JSON.parse(found["DNI Adjunto"]);
+                      doc = adjuntos.find(d => d.label === label);
+                    } catch {}
+                  }
+                  if (doc) {
+                    if (uploadBtn) {
+                      if (doc.fileName) uploadBtn.textContent = doc.fileName;
+                      if (doc.base64) uploadBtn.dataset.base64 = doc.base64;
+                    }
+                    if (vencInput) vencInput.value = doc.expiry || "";
+                    const today = new Date().toISOString().split("T")[0];
+                    const status = div.querySelector(".status");
+                    if (doc.expiry && status) {
+                      if (doc.expiry < today) {
+                        status.textContent = "Vencido";
+                        status.className = "status ml-3 text-sm text-red-600 font-semibold";
+                      } else {
+                        status.textContent = "Vigente";
+                        status.className = "status ml-3 text-sm text-green-600 font-semibold";
+                      }
+                    }
+                  }
+                });
+              }, 50);
+            }
+          }
+        })();
+      }
+    });
+
+    function showForm() {
+  hideAllScreens();
+  formScreen.classList.remove("hidden");
+  renderDocumentSlots();
+}
+
+    // Mostrar ficha del trabajador
+async function showWorkerDetail(worker) {
+  hideAllScreens();
+  workerDetail.classList.remove('hidden');
+  detailTitle.textContent = '';
+  let r = worker;
+  // Consultar registro actualizado por DNI
+  if (window.supabase && window.supabase.createClient && worker.DNI) {
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data, error } = await supabase.from('Nuevo Ingreso').select('*').eq('DNI', worker.DNI);
+    if (!error && data && data.length) {
+      r = data[0];
+    }
+  }
+  let html = `<div class='bg-white rounded-2xl shadow-lg p-6 max-w-2xl mx-auto'>`;
+  // Encabezado con icono y nombre
+  html += `<div class='flex items-center gap-4 mb-6'>
+    <div class='bg-indigo-100 rounded-full p-3'>
+      <svg class='w-10 h-10 text-indigo-600' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.657 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z'></path></svg>
+    </div>
+    <div>
+      <div class='text-2xl font-bold text-gray-800'>${r["Apellido y Nombre"] || r.nombre || r.DNI}</div>
+      <div class='text-sm text-gray-500'>${r.Empresa || ''}</div>
+    </div>
+  </div>`;
+  // Datos principales
+  html += `<div class='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>`;
+  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M16 17v1a3 3 0 01-6 0v-1'></path></svg></span><span class='font-semibold text-gray-700'>DNI:</span> <span class='text-gray-900'>${r.DNI || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6'></path></svg></span><span class='font-semibold text-gray-700'>CUIT:</span> <span class='text-gray-900'>${r.CUIT || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M3 7v4a1 1 0 001 1h3m10-5h3a1 1 0 011 1v4a1 1 0 01-1 1h-3'></path></svg></span><span class='font-semibold text-gray-700'>Empresa:</span> <span class='text-gray-900'>${r.Empresa || ''}</span></div>`;
+  html += `<div class='flex items-center gap-2'><span class='text-gray-500'><svg class='w-5 h-5' fill='none' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M12 11c0-1.105.895-2 2-2s2 .895 2 2-.895 2-2 2-2-.895-2-2z'></path></svg></span><span class='font-semibold text-gray-700'>Tipo:</span> <span class='text-gray-900'>${r["Tipo de trabajador"] || r.tipo || ''}</span></div>`;
+  html += `</div>`;
+  // Adjuntos
+  if (r["DNI Adjunto"]) {
+    try {
+      const adjuntos = JSON.parse(r["DNI Adjunto"]);
+      html += `<div class='mt-4'><span class='font-semibold text-gray-700 text-lg'>Adjuntos</span><div class='grid grid-cols-1 md:grid-cols-2 gap-4 mt-2'>`;
+      html += adjuntos.map(d => `
+        <div class='flex items-center gap-3 p-3 bg-gray-50 rounded-xl border shadow-sm'>
+          <div class='flex-1'>
+            <div class='font-semibold text-gray-800'>${d.label}</div>
+            ${d.expiry ? `<div class='text-xs text-gray-600'>Vto: ${d.expiry}</div>` : ''}
+          </div>
+          <a href='${d.url}' target='_blank' class='px-3 py-1 bg-indigo-600 text-white rounded font-semibold text-xs hover:bg-indigo-700 transition'>Ver PDF</a>
+        </div>
+      `).join("");
+      html += `</div></div>`;
+    } catch {}
+  }
+  // Mostrar credencial PDF si existe
+  if (r["Credencial PDF"]) {
+    html += `<div class='mt-4'><a href='${r["Credencial PDF"]}' target='_blank' class='px-4 py-2 bg-indigo-600 text-white rounded font-semibold text-xs hover:bg-indigo-700 transition'>Ver Credencial PDF</a></div>`;
+  }
+  html += `</div>`;
+  detailBody.innerHTML = html;
+}
+closeDetailBtn.addEventListener('click', function() {
+  workerDetail.classList.add('hidden');
+  showWorkers();
+});
+
+// JS para módulo credencial
+const buscarTrabajadorBtn = document.getElementById("buscarTrabajadorBtn");
+const credencialForm = document.getElementById("credencialForm");
+const credencialNombre = document.getElementById("credencialNombre");
+const credencialDNIShow = document.getElementById("credencialDNIShow");
+const credencialEmpresa = document.getElementById("credencialEmpresa");
+const credencialFoto = document.getElementById("credencialFoto");
+const credencialFotoPreview = document.getElementById("credencialFotoPreview");
+const credencialInterfaz = document.getElementById("credencialInterfaz");
+const generarCredencialBtn = document.getElementById("generarCredencialBtn");
+let credencialPdfBase64 = null;
+buscarTrabajadorBtn.addEventListener("click", async () => {
+  const dni = credencialDNI.value.trim();
+  if (!dni) { alert("Ingrese DNI"); return; }
+  if (window.supabase && window.supabase.createClient) {
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data, error } = await supabase.from('Nuevo Ingreso').select('*').eq('DNI', dni);
+    if (error || !data || !data.length) {
+      alert("Trabajador no encontrado");
+      credencialForm.classList.add("hidden");
+      return;
+    }
+    const t = data[0];
+    credencialNombre.value = t["Apellido y Nombre"] || "";
+    credencialDNIShow.value = t.DNI || "";
+    credencialEmpresa.value = t.Empresa || "";
+    credencialForm.classList.remove("hidden");
+  }
+});
+credencialFoto.addEventListener("change", function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    credencialFotoPreview.src = e.target.result;
+    credencialFotoPreview.classList.remove("hidden");
+  };
+  reader.readAsDataURL(file);
+});
+generarCredencialBtn.addEventListener("click", async function() {
+  const nombre = credencialNombre.value;
+  const dni = credencialDNIShow.value;
+  const empresa = credencialEmpresa.value;
+  const fotoSrc = credencialFotoPreview.src;
+  const interfaz = credencialInterfaz.value;
+  if (!nombre || !dni || !empresa) { alert("Complete todos los datos"); return; }
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] }); // tamaño tarjeta
+  // Fondo institucional
+  doc.setFillColor(20, 28, 48);
+  doc.rect(0, 0, 85.6, 54, 'F');
+  // Banda inferior
+  doc.setFillColor(40, 60, 120);
+  doc.rect(0, 44, 85.6, 10, 'F');
+  // Foto en extremo superior derecho
+  if (fotoSrc && fotoSrc.startsWith('data:image')) {
+    doc.addImage(fotoSrc, 'JPEG', 61, 2, 22, 22, undefined, 'FAST');
+  }
+  // Datos principales en blanco, letra grande y estética
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','bold');
+  doc.text('CREDENCIAL DE TRABAJADOR', 8, 16);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.text('Nombre:', 8, 22);
+  doc.text(nombre, 30, 22);
+  doc.text('DNI:', 8, 28);
+  doc.text(dni, 30, 28);
+  doc.text('Empresa:', 8, 34);
+  doc.text(empresa, 30, 34);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','bold');
+  doc.text(interfaz === 'autorizado' ? 'Autorizado a Interfaz' : 'No autorizado a Interfaz', 8, 40);
+  // Banda inferior texto
+  doc.setFontSize(6);
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','italic');
+  doc.text('Generado por PBIPAPP', 43, 48, {align:'center'});
+  const fechaHora = new Date();
+const fechaStr = fechaHora.getFullYear() + '-' + String(fechaHora.getMonth()+1).padStart(2,'0') + '-' + String(fechaHora.getDate()).padStart(2,'0');
+const horaStr = String(fechaHora.getHours()).padStart(2,'0') + ':' + String(fechaHora.getMinutes()).padStart(2,'0') + ':' + String(fechaHora.getSeconds()).padStart(2,'0');
+doc.text('Creado: ' + fechaStr + ' ' + horaStr, 43, 51, {align:'center'});
+  doc.save('Credencial_'+dni+'.pdf');
+  // Guardar PDF en Supabase y registrar URL en ficha
+  const pdfBlob = doc.output('blob');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const base64 = e.target.result.split(',')[1];
+    credencialPdfBase64 = base64;
+    if (window.supabase && window.supabase.createClient) {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const fileName = `${dni}_CREDENCIAL_${Date.now()}.pdf`;
+      const fileData = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+      const { data, error } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+      if (!error) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
+        // Actualizar registro del trabajador con la URL de la credencial
+        await supabase.from('Nuevo Ingreso').update({ "Credencial PDF": url }).eq('DNI', dni);
+        alert('Credencial generada y guardada en la ficha del trabajador');
+      } else {
+        alert('Error al guardar la credencial PDF: ' + (error.message || error));
+      }
+    }
+  };
+  reader.readAsDataURL(pdfBlob);
+});
+
+// JS para módulo vehículos
+const vehiculoBuscarDominio = document.getElementById("vehiculoBuscarDominio");
+const buscarVehiculoBtn = document.getElementById("buscarVehiculoBtn");
+const agregarVehiculoBtn = document.getElementById("agregarVehiculoBtn");
+const vehiculoDatos = document.getElementById("vehiculoDatos");
+
+let vehiculoFormNuevo = null;
+
+agregarVehiculoBtn.addEventListener("click", () => {
+  // Si ya existe el form, no lo duplica
+  if (vehiculoFormNuevo) {
+    vehiculoFormNuevo.classList.remove("hidden");
+    return;
+  }
+  vehiculoFormNuevo = document.createElement("div");
+  vehiculoFormNuevo.className = "bg-gray-50 border rounded p-4 mb-4";
+  vehiculoFormNuevo.innerHTML = `
+    <h4 class='text-lg font-bold mb-2'>Nuevo Vehículo</h4>
+    <div class='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
+      <div><label>Dominio</label><input id='nuevoDominio' class='w-full p-2 border rounded' /></div>
+      <div><label>Marca</label><input id='nuevoMarca' class='w-full p-2 border rounded' /></div>
+      <div><label>Modelo</label><input id='nuevoModelo' class='w-full p-2 border rounded' /></div>
+      <div><label>Color</label><input id='nuevoColor' class='w-full p-2 border rounded' /></div>
+      <div><label>Año</label><input id='nuevoAnio' class='w-full p-2 border rounded' /></div>
+      <div><label>Vencimiento documentación</label><input id='nuevoVencimiento' type='date' class='w-full p-2 border rounded' /></div>
+      <div class='col-span-3 flex items-center gap-2 mt-2'>
+        <label>PDF documentación</label>
+        <input type='file' id='nuevoPdf' accept='application/pdf' class='hidden' />
+        <button id='nuevoPdfBtn' class='px-3 py-1 bg-blue-600 text-white rounded'>Elegir PDF</button>
+        <span id='nuevoPdfStatus' class='ml-3 text-sm'></span>
+      </div>
+    </div>
+    <div class='flex gap-2'>
+      <button id='guardarVehiculoBtn' class='bg-green-600 text-white px-4 py-2 rounded'>Guardar</button>
+      <button id='cancelarVehiculoBtn' class='bg-gray-300 px-4 py-2 rounded'>Cancelar</button>
+    </div>
+  `;
+  vehiculoDatos.prepend(vehiculoFormNuevo);
+
+  // PDF file logic
+  const nuevoPdf = vehiculoFormNuevo.querySelector('#nuevoPdf');
+  const nuevoPdfBtn = vehiculoFormNuevo.querySelector('#nuevoPdfBtn');
+  const nuevoPdfStatus = vehiculoFormNuevo.querySelector('#nuevoPdfStatus');
+  let pdfBase64 = "";
+  nuevoPdfBtn.addEventListener('click', () => nuevoPdf.click());
+  nuevoPdf.addEventListener('change', async (ev) => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    if (f.type !== "application/pdf") {
+      alert("Solo se permiten archivos PDF");
+      nuevoPdf.value = "";
+      return;
+    }
+    const ab = await f.arrayBuffer();
+    pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+    nuevoPdfBtn.textContent = f.name;
+    nuevoPdfBtn.title = f.name;
+    nuevoPdfStatus.textContent = "PDF listo para subir";
+  });
+
+  // Guardar vehículo
+  vehiculoFormNuevo.querySelector('#guardarVehiculoBtn').addEventListener('click', async () => {
+    const Dominio = vehiculoFormNuevo.querySelector('#nuevoDominio').value.trim().toUpperCase();
+    const Marca = vehiculoFormNuevo.querySelector('#nuevoMarca').value.trim();
+    const Modelo = vehiculoFormNuevo.querySelector('#nuevoModelo').value.trim();
+    const Color = vehiculoFormNuevo.querySelector('#nuevoColor').value.trim();
+    const Año = vehiculoFormNuevo.querySelector('#nuevoAnio').value.trim();
+    const Vencimiento = vehiculoFormNuevo.querySelector('#nuevoVencimiento').value;
+    if (!Dominio || !Marca || !Modelo || !Color || !Año) {
+      alert('Complete todos los campos obligatorios');
+      return;
+    }
+    let pdfUrl = null;
+    if (window.supabase && window.supabase.createClient) {
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      // Subir PDF si existe
+      if (pdfBase64) {
+        const fileName = `${Dominio}_VEHICULO_${Date.now()}.pdf`;
+        const fileData = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const { data, error } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
+          contentType: 'application/pdf', upsert: true
+        });
+        if (!error) {
+          pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
+        }
+      }
+      // Insertar en tabla Vehículos
+      const { error: insertError } = await supabase.from('Vehículos').insert([
+        { Dominio, Marca, Modelo, Color, Año, Vencimiento, PdfUrl: pdfUrl }
+      ]);
+      if (insertError) {
+        alert('Error al guardar vehículo: ' + (insertError.message || insertError));
+        return;
+      }
+      alert('Vehículo guardado correctamente');
+      vehiculoFormNuevo.remove();
+      vehiculoFormNuevo = null;
+    }
+  });
+  // Cancelar
+  vehiculoFormNuevo.querySelector('#cancelarVehiculoBtn').addEventListener('click', () => {
+    vehiculoFormNuevo.remove();
+    vehiculoFormNuevo = null;
+  });
+});
+  </script>
+</body>
+</html>
