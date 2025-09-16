@@ -506,6 +506,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
       if ((u === "1" && p === "1") || (u && p)) {
         safeAdd(loginScreen, "hidden");
         safeRemove(app, "hidden");
+        localStorage.setItem("pbipapp_usuario_actual", u); // Guardar usuario actual
         showReport();
       } else {
         safeRemove(loginError, "hidden");
@@ -1078,7 +1079,7 @@ exportExcelBtn.addEventListener("click", function() {
   document.body.removeChild(link);
 });
 
-    // Exportar reporte de barreras a PDF
+// Exportar reporte de barreras a PDF
 document.getElementById("barreraExportBtn").onclick = function() {
   const arr = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
   if (!arr.length) {
@@ -1092,28 +1093,54 @@ document.getElementById("barreraExportBtn").onclick = function() {
   doc.text('Emitido: ' + new Date().toLocaleString(), 148, 24, { align: 'center' });
   doc.setLineWidth(0.5);
   doc.line(10, 28, 287, 28);
-  const headers = ["N° Barrera", "N° Precinto", "Observaciones", "Autorizantes", "Fecha/Hora"];
+  const headers = ["N° Barrera", "N° Precinto", "Precinto anterior", "Observaciones", "Autorizante", "Usuario", "Fecha/Hora"];
   const startX = 10, startY = 34, rowH = 10;
   let y = startY;
+
+  // Agrupar registros por barrera y ordenar por fecha/hora
+  const registrosPorBarrera = {};
+  arr.forEach((r) => {
+    if (!registrosPorBarrera[r.barreraNumero]) registrosPorBarrera[r.barreraNumero] = [];
+    registrosPorBarrera[r.barreraNumero].push(r);
+  });
+  Object.values(registrosPorBarrera).forEach(list => {
+    list.sort((a, b) => {
+      const da = new Date(a.fechaHora), db = new Date(b.fechaHora);
+      return da - db;
+    });
+  });
+
   // Header
   headers.forEach((h, i) => {
     doc.setFont('helvetica', 'bold');
-    doc.rect(startX + i*57, y, 57, rowH);
-    doc.text(h, startX + i*57 + 2, y + 7);
+    doc.rect(startX + i*40, y, 40, rowH);
+    doc.text(h, startX + i*40 + 2, y + 7);
   });
   y += rowH;
   doc.setFont('helvetica', 'normal');
-  arr.forEach(r => {
+  arr.forEach((r) => {
+    let precintoAnterior = "S/Reg";
+    const lista = registrosPorBarrera[r.barreraNumero] || [];
+    let idxActual = lista.findIndex(item =>
+      item.barreraPrecinto === r.barreraPrecinto &&
+      item.fechaHora === r.fechaHora
+    );
+    if (idxActual > 0) {
+      const anterior = lista[idxActual - 1];
+      precintoAnterior = anterior.barreraPrecinto || "S/Reg";
+    }
     const row = [
       r.barreraNumero || "",
       r.barreraPrecinto || "",
+      precintoAnterior,
       r.barreraObs || "",
-      r.barreraAutorizantes || "",
+      r.barreraAutorizantes || r.barreraAutorizante || "",
+      r.usuario || "",
       r.fechaHora || ""
     ];
     row.forEach((cell, i) => {
-      doc.rect(startX + i*57, y, 57, rowH);
-      doc.text(String(cell), startX + i*57 + 2, y + 7);
+      doc.rect(startX + i*40, y, 40, rowH);
+      doc.text(String(cell), startX + i*40 + 2, y + 7);
     });
     y += rowH;
     if (y > 190) { doc.addPage(); y = startY + rowH; }
@@ -1121,21 +1148,44 @@ document.getElementById("barreraExportBtn").onclick = function() {
   doc.save('ReporteBarreras.pdf');
 };
 
-// Exportar reporte de barreras a Excel (CSV)
 document.getElementById("barreraExportExcelBtn").onclick = function() {
   const arr = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
   if (!arr.length) {
     alert("No hay registros para exportar.");
     return;
   }
-  const headers = ["N° Barrera", "N° Precinto", "Observaciones", "Autorizantes", "Fecha/Hora"];
+  const headers = ["N° Barrera", "N° Precinto", "Precinto anterior", "Observaciones", "Autorizante", "Usuario", "Fecha/Hora"];
   let csv = headers.join(",") + "\n";
-  arr.forEach(r => {
+  // Agrupar registros por barrera y ordenar por fecha/hora
+  const registrosPorBarrera = {};
+  arr.forEach((r) => {
+    if (!registrosPorBarrera[r.barreraNumero]) registrosPorBarrera[r.barreraNumero] = [];
+    registrosPorBarrera[r.barreraNumero].push(r);
+  });
+  Object.values(registrosPorBarrera).forEach(list => {
+    list.sort((a, b) => {
+      const da = new Date(a.fechaHora), db = new Date(b.fechaHora);
+      return da - db;
+    });
+  });
+  arr.forEach((r) => {
+    let precintoAnterior = "S/Reg";
+    const lista = registrosPorBarrera[r.barreraNumero] || [];
+    let idxActual = lista.findIndex(item =>
+      item.barreraPrecinto === r.barreraPrecinto &&
+      item.fechaHora === r.fechaHora
+    );
+    if (idxActual > 0) {
+      const anterior = lista[idxActual - 1];
+      precintoAnterior = anterior.barreraPrecinto || "S/Reg";
+    }
     csv += [
       r.barreraNumero || "",
       r.barreraPrecinto || "",
+      precintoAnterior,
       r.barreraObs || "",
-      r.barreraAutorizantes || "",
+      r.barreraAutorizantes || r.barreraAutorizante || "",
+      r.usuario || "",
       r.fechaHora || ""
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
   });
@@ -1148,7 +1198,7 @@ document.getElementById("barreraExportExcelBtn").onclick = function() {
   document.body.removeChild(link);
 };
 
-    // Actualizar autocompletar por DNI en formulario para leer desde Supabase
+// Actualizar autocompletar por DNI en formulario para leer desde Supabase
     dniInput.addEventListener("blur", () => {
       const v = dniInput.value.trim();
       if (!v) return;
@@ -1566,7 +1616,7 @@ if (barreraForm) {
     const precinto = document.getElementById("barreraPrecinto").value.trim();
     const llave = document.getElementById("barreraLlave") ? document.getElementById("barreraLlave").value.trim() : "";
     const obs = document.getElementById("barreraObs").value.trim();
-    // const autorizantes = document.getElementById("barreraAutorizantes") ? document.getElementById("barreraAutorizantes").value.trim() : "";
+    const usuario = localStorage.getItem("pbipapp_usuario_actual") || ""; // Nuevo: usuario actual
     const fechaHora = new Date().toLocaleString();
     if (!numero || !precinto) {
       alert("Complete los campos obligatorios");
@@ -1586,7 +1636,8 @@ if (barreraForm) {
       barreraLlave: llave,
       barreraObs: obs,
       // barreraAutorizantes: autorizantes,
-      fechaHora
+      fechaHora,
+      usuario // Nuevo campo
     });
     localStorage.setItem("pbipapp_barreras_registros", JSON.stringify(registros));
     renderBarrerasTable();
@@ -1594,7 +1645,7 @@ if (barreraForm) {
   });
 }
 
-// Renderizar tabla de barreras con filtro aplicado
+// Renderizar tabla de barreras con campo Usuario y Observaciones en lugar de N° Llave
 function renderBarrerasTable() {
   if (!barrerasTable) return;
   barrerasTable.innerHTML = "";
@@ -1606,11 +1657,27 @@ function renderBarrerasTable() {
   thead.innerHTML = `
     <td class="p-2">N° Barrera</td>
     <td class="p-2">N° Precinto</td>
-    <td class="p-2">N° Llave</td>
+    <td class="p-2">Precinto anterior</td>
     <td class="p-2">Observaciones</td>
+    <td class="p-2">Autorizante</td>
+    <td class="p-2">Usuario</td>
     <td class="p-2">Fecha/Hora</td>
   `;
   barrerasTable.appendChild(thead);
+
+  // Agrupar registros por barrera y ordenar por fecha/hora
+  const registrosPorBarrera = {};
+  arr.forEach((r) => {
+    if (!registrosPorBarrera[r.barreraNumero]) registrosPorBarrera[r.barreraNumero] = [];
+    registrosPorBarrera[r.barreraNumero].push(r);
+  });
+  Object.values(registrosPorBarrera).forEach(list => {
+    list.sort((a, b) => {
+      const da = new Date(a.fechaHora), db = new Date(b.fechaHora);
+      return da - db;
+    });
+  });
+
   arr
     .filter(r => {
       if (!filtro) return true;
@@ -1619,14 +1686,27 @@ function renderBarrerasTable() {
         (r.barreraPrecinto && String(r.barreraPrecinto).toLowerCase().includes(filtro))
       );
     })
-    .forEach(r => {
+    .forEach((r) => {
+      // Buscar el registro anterior de la misma barrera (por fecha/hora)
+      let precintoAnterior = "S/Reg";
+      const lista = registrosPorBarrera[r.barreraNumero] || [];
+      let idxActual = lista.findIndex(item =>
+        item.barreraPrecinto === r.barreraPrecinto &&
+        item.fechaHora === r.fechaHora
+      );
+      if (idxActual > 0) {
+        const anterior = lista[idxActual - 1];
+        precintoAnterior = anterior.barreraPrecinto || "S/Reg";
+      }
       const tr = document.createElement("tr");
       tr.className = "border-b";
       tr.innerHTML = `
         <td class="p-2">${r.barreraNumero || ""}</td>
         <td class="p-2">${r.barreraPrecinto || ""}</td>
-        <td class="p-2">${r.barreraLlave || ""}</td>
+        <td class="p-2">${precintoAnterior}</td>
         <td class="p-2">${r.barreraObs || ""}</td>
+        <td class="p-2">${r.barreraAutorizantes || r.barreraAutorizante || ""}</td>
+        <td class="p-2">${r.usuario || ""}</td>
         <td class="p-2">${r.fechaHora || ""}</td>
       `;
       barrerasTable.appendChild(tr);
