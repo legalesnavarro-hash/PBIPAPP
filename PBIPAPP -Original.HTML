@@ -49,6 +49,7 @@
         <button id="navWorkers" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Trabajadores</button>
         <button id="navCompanies" type="button" class="px-4 py-2 bg-gray-200 rounded">Listado Empresas</button>
         <button id="navReport" type="button" class="px-4 py-2 bg-gray-200 rounded">Reporte Ingresos</button>
+        <button id="navBarreras" type="button" class="px-4 py-2 bg-gray-200 rounded">Control de Barreras</button>
         <button id="navCredencial" type="button" class="px-4 py-2 bg-gray-200 rounded">Generar Credencial</button>
       </div>
       <button id="logoutBtn" class="ml-auto px-4 py-2 bg-red-500 text-white rounded">Cerrar sesión</button>
@@ -294,6 +295,50 @@
       </div>
     </section>
 
+    <!-- MODULO CONTROL DE BARRERAS -->
+    <section id="barrerasScreen" class="hidden bg-white p-6 rounded shadow">
+      <h3 class="text-xl font-bold mb-4">Control de Barreras</h3>
+      <div class="mb-2 flex gap-2 items-end">
+        <button id="addBarreraBtn" class="bg-blue-600 text-white px-3 py-1 rounded">Agregar nueva barrera</button>
+        <input id="newBarreraInput" class="p-2 border rounded hidden" placeholder="N° nueva barrera" />
+        <input id="newBarreraNombre" class="p-2 border rounded hidden" placeholder="Nombre barrera" />
+        <select id="newBarreraSite" class="p-2 border rounded hidden">
+          <option value="">Site</option>
+          <option value="PPA">PPA</option>
+          <option value="VGG">VGG</option>
+        </select>
+        <input id="newBarreraAutorizante" class="p-2 border rounded hidden" placeholder="Autorizante" />
+        <button id="saveNewBarreraBtn" class="bg-green-600 text-white px-3 py-1 rounded hidden">Guardar</button>
+      </div>
+      <form id="barreraForm" class="mb-6 grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div>
+          <label class="block mb-1">N° Barrera</label>
+          <select id="barreraNumero" class="w-full p-2 border rounded" required></select>
+        </div>
+        <div>
+          <label class="block mb-1">N° Precinto</label>
+          <input id="barreraPrecinto" class="w-full p-2 border rounded" required />
+        </div>
+        <div>
+          <label class="block mb-1">Observaciones</label>
+          <input id="barreraObs" class="w-full p-2 border rounded" />
+        </div>
+        <div class="flex items-end">
+          <button id="barreraGuardarBtn" type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Registrar Apertura</button>
+        </div>
+      </form>
+      <div class="mb-4 flex gap-2">
+        <button id="barreraExportBtn" class="bg-indigo-600 text-white px-3 py-1 rounded">Exportar Reporte PDF</button>
+        <button id="barreraExportExcelBtn" class="bg-green-600 text-white px-3 py-1 rounded">Exportar Excel (CSV)</button>
+        <input id="barreraFiltro" placeholder="Filtrar por N° Barrera o Precinto" class="p-2 border rounded flex-1" />
+      </div>
+      <div class="overflow-auto">
+        <table class="w-full" id="barrerasTable">
+          <!-- filas generadas por JS -->
+        </table>
+      </div>
+    </section>
+
     <!-- after NAV (insert console) -->
     <div id="entryConsole" class="hidden max-w-6xl mx-auto mt-4 p-3 bg-white rounded shadow flex items-center gap-3">
       <label class="text-sm font-medium">Control ingreso (DNI):</label>
@@ -407,6 +452,7 @@ window.addEventListener('DOMContentLoaded', function() {
     const navWorkers = document.getElementById("navWorkers");
     const navCompanies = document.getElementById("navCompanies");
     const navReport = document.getElementById("navReport");
+    const navBarreras = document.getElementById("navBarreras");
     const navCredencial = document.getElementById("navCredencial");
     const entryConsole = document.getElementById("entryConsole");
 
@@ -478,6 +524,10 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
     if (navWorkers) navWorkers.addEventListener("click", (ev) => { showWorkers(); });
     if (navCompanies) navCompanies.addEventListener("click", (ev) => { showCompanies(); });
     if (navReport) navReport.addEventListener("click", () => showReport());
+    if (navBarreras) navBarreras.addEventListener("click", () => {
+  hideAllScreens();
+  barrerasScreen.classList.remove("hidden");
+});
     if (navCredencial) navCredencial.addEventListener("click", () => {
   hideAllScreens();
   credencialScreen.classList.remove("hidden");
@@ -489,6 +539,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
       safeAdd(companiesScreen, "hidden");
       safeAdd(workerDetail, "hidden");
       safeAdd(reportScreen, "hidden");
+      safeAdd(barrerasScreen, "hidden");
       safeAdd(credencialScreen, "hidden");
     }
 
@@ -770,7 +821,7 @@ if (vehiculoIngreso && vehiculoForm) {
       // Agregar encabezado
       const thead = document.createElement("tr");
       thead.className = "font-semibold border-b";
-      thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td><td class='p-2'>Adjuntos</td>`;
+      thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td>`;
       workersTable.appendChild(thead);
       const dniQ = searchDNI.value.trim();
       // Leer registros desde Supabase
@@ -779,35 +830,22 @@ if (vehiculoIngreso && vehiculoForm) {
         (async () => {
           const { data, error } = await supabase.from('Nuevo Ingreso').select('*');
           if (error) {
-            workersTable.innerHTML = `<tr><td colspan='6' class='text-red-600 p-2'>Error leyendo registros de Supabase: ${error.message}</td></tr>`;
+            workersTable.innerHTML = `<tr><td colspan='4' class='text-red-600 p-2'>Error leyendo registros de Supabase: ${error.message}</td></tr>`;
             return;
           }
           if (!data || !data.length) {
-            workersTable.innerHTML = `<tr><td colspan='6' class='text-gray-500 p-2'>No hay registros</td></tr>`;
+            workersTable.innerHTML = `<tr><td colspan='4' class='text-gray-500 p-2'>No hay registros</td></tr>`;
             return;
           }
           data.forEach((r, i) => {
-            console.log('Registro:', r); // Log para depuración
+            // console.log('Registro:', r); // Log para depuración
             if (dniQ && !(r.DNI && r.DNI.includes(dniQ))) return;
             const tr = document.createElement("tr");
-            if (r["DNI Adjunto"]) {
-              try {
-                const adjuntos = JSON.parse(r["DNI Adjunto"]);
-                docsHtml = adjuntos.map(d => `
-                  <div class='text-xs flex items-center gap-2'>
-                    <a href='${d.url}' target='_blank' class='text-blue-600 underline'>${d.label}</a>
-                    ${d.expiry ? `<span class='text-gray-600'>(Vto: ${d.expiry})</span>` : ''}
-                    <a href='${d.url}' target='_blank' class='px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold'>Previsualizar</a>
-                  </div>
-                `).join("");
-              } catch {}
-            }
             tr.innerHTML = `
               <td class="p-2 cursor-pointer text-blue-700 underline worker-dni">${r.DNI || ''}</td>
               <td class="p-2">${r["Apellido y Nombre"] || ''}</td>
               <td class="p-2">${r.Empresa || ''}</td>
               <td class="p-2">${r.CUIT || ''}</td>
-              <td class="p-2">${docsHtml}</td>
             `;
             // Evento para mostrar ficha al hacer click en DNI
             tr.querySelector('.worker-dni').addEventListener('click', function() {
@@ -861,7 +899,7 @@ if (vehiculoIngreso && vehiculoForm) {
               // Agregar encabezado
               const thead = document.createElement("tr");
               thead.className = "font-semibold border-b";
-              thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td><td class='p-2'>Adjuntos</td>`;
+              thead.innerHTML = `<td class='p-2'>DNI</td><td class='p-2'>Apellido y Nombre</td><td class='p-2'>Empresa</td><td class='p-2'>CUIT</td>`;
               workersTable.appendChild(thead);
               map[emp].forEach(r => {
                 const tr = document.createElement("tr");
@@ -1040,6 +1078,76 @@ exportExcelBtn.addEventListener("click", function() {
   document.body.removeChild(link);
 });
 
+    // Exportar reporte de barreras a PDF
+document.getElementById("barreraExportBtn").onclick = function() {
+  const arr = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
+  if (!arr.length) {
+    alert("No hay registros para exportar.");
+    return;
+  }
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape', format: 'a4' });
+  doc.setFontSize(16);
+  doc.text('Reporte de Barreras', 148, 16, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('Emitido: ' + new Date().toLocaleString(), 148, 24, { align: 'center' });
+  doc.setLineWidth(0.5);
+  doc.line(10, 28, 287, 28);
+  const headers = ["N° Barrera", "N° Precinto", "Observaciones", "Autorizantes", "Fecha/Hora"];
+  const startX = 10, startY = 34, rowH = 10;
+  let y = startY;
+  // Header
+  headers.forEach((h, i) => {
+    doc.setFont('helvetica', 'bold');
+    doc.rect(startX + i*57, y, 57, rowH);
+    doc.text(h, startX + i*57 + 2, y + 7);
+  });
+  y += rowH;
+  doc.setFont('helvetica', 'normal');
+  arr.forEach(r => {
+    const row = [
+      r.barreraNumero || "",
+      r.barreraPrecinto || "",
+      r.barreraObs || "",
+      r.barreraAutorizantes || "",
+      r.fechaHora || ""
+    ];
+    row.forEach((cell, i) => {
+      doc.rect(startX + i*57, y, 57, rowH);
+      doc.text(String(cell), startX + i*57 + 2, y + 7);
+    });
+    y += rowH;
+    if (y > 190) { doc.addPage(); y = startY + rowH; }
+  });
+  doc.save('ReporteBarreras.pdf');
+};
+
+// Exportar reporte de barreras a Excel (CSV)
+document.getElementById("barreraExportExcelBtn").onclick = function() {
+  const arr = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
+  if (!arr.length) {
+    alert("No hay registros para exportar.");
+    return;
+  }
+  const headers = ["N° Barrera", "N° Precinto", "Observaciones", "Autorizantes", "Fecha/Hora"];
+  let csv = headers.join(",") + "\n";
+  arr.forEach(r => {
+    csv += [
+      r.barreraNumero || "",
+      r.barreraPrecinto || "",
+      r.barreraObs || "",
+      r.barreraAutorizantes || "",
+      r.fechaHora || ""
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'ReporteBarreras.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
     // Actualizar autocompletar por DNI en formulario para leer desde Supabase
     dniInput.addEventListener("blur", () => {
       const v = dniInput.value.trim();
@@ -1175,42 +1283,72 @@ async function showWorkerDetail(worker) {
     const exportBtn = document.getElementById('exportFichaPdfBtn');
     if (exportBtn) {
       exportBtn.onclick = function() {
-        const doc = new window.jspdf.jsPDF({ orientation: 'portrait', format: 'a4' });
-        doc.setFontSize(16);
-        doc.text('Ficha de trabajador', 105, 20, { align: 'center' });
-        doc.setFontSize(10);
-        let y = 35;
-        doc.text(`DNI: ${r.DNI || ''}`, 20, y);
-        doc.text(`CUIT: ${r.CUIT || ''}`, 120, y);
-        y += 8;
-        doc.text(`Apellido y Nombre: ${r["Apellido y Nombre"] || r.nombre || r.DNI}`, 20, y);
-        y += 8;
-        doc.text(`Empresa: ${r.Empresa || ''}`, 20, y);
-        doc.text(`Tipo de trabajador: ${r["Tipo de trabajador"] || r.tipo || ''}`, 120, y);
-        y += 8;
-        doc.text(`Dominio vehículo: ${dominioVehiculo}`, 20, y);
-        y += 8;
-        doc.text(`Fecha ingreso: ${r["Fecha Ingreso"] ? new Date(r["Fecha Ingreso"]).toLocaleString() : ''}`, 20, y);
-        doc.text(`Fecha salida: ${r["Fecha Salida"] ? new Date(r["Fecha Salida"]).toLocaleString() : ''}`, 120, y);
-        y += 12;
-        doc.setFontSize(12);
-        doc.text('Adjuntos:', 20, y);
-        doc.setFontSize(9);
-        y += 6;
-        if (r["DNI Adjunto"]) {
-          try {
-            const adjuntos = JSON.parse(r["DNI Adjunto"]);
-            adjuntos.forEach(d => {
-              doc.text(`- ${d.label}${d.expiry ? ' (Vto: ' + d.expiry + ')' : ''}`, 25, y);
-              y += 6;
-            });
-          } catch {}
+        const doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: [85.6, 54] }); // tamaño tarjeta
+        // Fondo institucional
+        doc.setFillColor(20, 28, 48);
+        doc.rect(0, 0, 85.6, 54, 'F');
+        // Banda inferior
+        doc.setFillColor(40, 60, 120);
+        doc.rect(0, 44, 85.6, 10, 'F');
+        // Foto en extremo superior derecho
+        if (fotoSrc && fotoSrc.startsWith('data:image')) {
+          doc.addImage(fotoSrc, 'JPEG', 61, 2, 22, 22, undefined, 'FAST');
         }
-        doc.save(`Ficha_${r.DNI || 'trabajador'}.pdf`);
+        // Datos principales en blanco, letra grande y estética
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(8);
+        doc.setFont('helvetica','bold');
+        doc.text('CREDENCIAL DE TRABAJADOR', 8, 16);
+        doc.setFontSize(9);
+        doc.setFont('helvetica','normal');
+        doc.text('Nombre:', 8, 22);
+        doc.text(nombre, 30, 22);
+        doc.text('DNI:', 8, 28);
+        doc.text(dni, 30, 28);
+        doc.text('Empresa:', 8, 34);
+        doc.text(empresa, 30, 34);
+        doc.setFontSize(8);
+        doc.setFont('helvetica','bold');
+        doc.text(interfaz === 'autorizado' ? 'Autorizado a Interfaz' : 'No autorizado a Interfaz', 8, 40);
+        // Banda inferior texto
+        doc.setFontSize(6);
+        doc.setTextColor(255,255,255);
+        doc.setFont('helvetica','italic');
+        doc.text('Generado por PBIPAPP', 43, 48, {align:'center'});
+        const fechaHora = new Date();
+const fechaStr = fechaHora.getFullYear() + '-' + String(fechaHora.getMonth()+1).padStart(2,'0') + '-' + String(fechaHora.getDate()).padStart(2,'0');
+const horaStr = String(fechaHora.getHours()).padStart(2,'0') + ':' + String(fechaHora.getMinutes()).padStart(2,'0') + ':' + String(fechaHora.getSeconds()).padStart(2,'0');
+doc.text('Creado: ' + fechaStr + ' ' + horaStr, 43, 51, {align:'center'});
+        doc.save('Credencial_'+dni+'.pdf');
+        // Guardar PDF en Supabase y registrar URL en ficha
+        const pdfBlob = doc.output('blob');
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const base64 = e.target.result.split(',')[1];
+          credencialPdfBase64 = base64;
+          if (window.supabase && window.supabase.createClient) {
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const fileName = `${dni}_CREDENCIAL_${Date.now()}.pdf`;
+            const fileData = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            const { data, error } = await supabase.storage.from('NUEVO INGRESO ADJUNTOS').upload(fileName, fileData, {
+              contentType: 'application/pdf',
+              upsert: true
+            });
+            if (!error) {
+              const url = `${SUPABASE_URL}/storage/v1/object/public/NUEVO INGRESO ADJUNTOS/${fileName}`;
+              // Actualizar registro del trabajador con la URL de la credencial
+              await supabase.from('Nuevo Ingreso').update({ "Credencial PDF": url }).eq('DNI', dni);
+              alert('Credencial generada y guardada en la ficha del trabajador');
+            } else {
+              alert('Error al guardar la credencial PDF: ' + (error.message || error));
+            }
+          }
+        };
+        reader.readAsDataURL(pdfBlob);
       };
     }
   }, 100);
-}
+ }
 closeDetailBtn.addEventListener('click', function() {
   workerDetail.classList.add('hidden');
   showWorkers();
@@ -1325,6 +1463,180 @@ doc.text('Creado: ' + fechaStr + ' ' + horaStr, 43, 51, {align:'center'});
   };
   reader.readAsDataURL(pdfBlob);
 });
+    // ---------- Barreras: gestión de agregar nueva barrera y select dinámico ----------
+const addBarreraBtn = document.getElementById("addBarreraBtn");
+const newBarreraInput = document.getElementById("newBarreraInput");
+const newBarreraNombre = document.getElementById("newBarreraNombre");
+const newBarreraSite = document.getElementById("newBarreraSite");
+const newBarreraAutorizante = document.getElementById("newBarreraAutorizante");
+const saveNewBarreraBtn = document.getElementById("saveNewBarreraBtn");
+const barreraNumero = document.getElementById("barreraNumero");
+
+// Utiliza funciones robustas para leer/escribir barreras
+function getBarrerasArr() {
+  try {
+    const arr = JSON.parse(localStorage.getItem("pbipapp_barreras") || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function setBarrerasArr(arr) {
+  localStorage.setItem("pbipapp_barreras", JSON.stringify(arr));
+}
+function renderBarrerasSelect() {
+  const arr = getBarrerasArr();
+  if (barreraNumero) {
+    barreraNumero.innerHTML = "<option value=''>Seleccione...</option>" +
+      arr.map(b => {
+        if (typeof b === "object") {
+          return `<option value="${b.numero}">${b.numero} - ${b.nombre || ""} - ${b.site || ""}</option>`;
+        } else {
+          return `<option value="${b}">${b}</option>`;
+        }
+      }).join("");
+  }
+}
+
+// Mostrar inputs para nueva barrera (con nombre, site y autorizante)
+if (addBarreraBtn && newBarreraInput && newBarreraNombre && newBarreraSite && newBarreraAutorizante && saveNewBarreraBtn) {
+  addBarreraBtn.onclick = function() {
+    newBarreraInput.classList.remove("hidden");
+    newBarreraNombre.classList.remove("hidden");
+    newBarreraSite.classList.remove("hidden");
+    newBarreraAutorizante.classList.remove("hidden");
+    saveNewBarreraBtn.classList.remove("hidden");
+    newBarreraInput.value = "";
+    newBarreraNombre.value = "";
+    newBarreraSite.value = "";
+    newBarreraAutorizante.value = "";
+    newBarreraInput.focus();
+  };
+  saveNewBarreraBtn.onclick = function() {
+    const numero = newBarreraInput.value.trim();
+    const nombre = newBarreraNombre.value.trim();
+    const site = newBarreraSite.value.trim();
+    const autorizante = newBarreraAutorizante.value.trim();
+    if (!numero || !nombre || !site || !autorizante) {
+      alert("Complete todos los campos de la nueva barrera");
+      return;
+    }
+    let arr = getBarrerasArr();
+    if (!arr.some(b => (typeof b === "object" ? b.numero : b) === numero)) {
+      arr.push({ numero, nombre, site, autorizante });
+      setBarrerasArr(arr);
+    }
+    renderBarrerasSelect();
+    if (barreraNumero) barreraNumero.value = numero;
+    newBarreraInput.classList.add("hidden");
+    newBarreraNombre.classList.add("hidden");
+    newBarreraSite.classList.add("hidden");
+    newBarreraAutorizante.classList.add("hidden");
+    saveNewBarreraBtn.classList.add("hidden");
+    newBarreraInput.value = "";
+    newBarreraNombre.value = "";
+    newBarreraSite.value = "";
+    newBarreraAutorizante.value = "";
+  };
+}
+
+// Refresca el select cada vez que se muestra la pantalla de barreras
+if (document.getElementById("navBarreras")) {
+  document.getElementById("navBarreras").addEventListener("click", () => {
+    renderBarrerasSelect();
+    newBarreraInput.classList.add("hidden");
+    newBarreraNombre.classList.add("hidden");
+    newBarreraSite.classList.add("hidden");
+    newBarreraAutorizante.classList.add("hidden");
+    saveNewBarreraBtn.classList.add("hidden");
+  });
+}
+
+// Render inicial
+renderBarrerasSelect();
+
+// Filtro por barrera o precinto
+const barreraFiltro = document.getElementById("barreraFiltro");
+const barrerasTable = document.getElementById("barrerasTable");
+
+// Validar que un número de precinto solo pueda cargarse una vez
+const barreraForm = document.getElementById("barreraForm");
+if (barreraForm) {
+  barreraForm.addEventListener("submit", function(ev) {
+    ev.preventDefault();
+    const numero = document.getElementById("barreraNumero").value;
+    const precinto = document.getElementById("barreraPrecinto").value.trim();
+    const llave = document.getElementById("barreraLlave") ? document.getElementById("barreraLlave").value.trim() : "";
+    const obs = document.getElementById("barreraObs").value.trim();
+    // const autorizantes = document.getElementById("barreraAutorizantes") ? document.getElementById("barreraAutorizantes").value.trim() : "";
+    const fechaHora = new Date().toLocaleString();
+    if (!numero || !precinto) {
+      alert("Complete los campos obligatorios");
+      return;
+    }
+    let registros = [];
+    try {
+      registros = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
+    } catch { registros = []; }
+    if (registros.some(r => r.barreraPrecinto && r.barreraPrecinto.toLowerCase() === precinto.toLowerCase())) {
+      alert("El número de precinto ya fue registrado. No se puede cargar dos veces.");
+      return;
+    }
+    registros.push({
+      barreraNumero: numero,
+      barreraPrecinto: precinto,
+      barreraLlave: llave,
+      barreraObs: obs,
+      // barreraAutorizantes: autorizantes,
+      fechaHora
+    });
+    localStorage.setItem("pbipapp_barreras_registros", JSON.stringify(registros));
+    renderBarrerasTable();
+    barreraForm.reset();
+  });
+}
+
+// Renderizar tabla de barreras con filtro aplicado
+function renderBarrerasTable() {
+  if (!barrerasTable) return;
+  barrerasTable.innerHTML = "";
+  const arr = JSON.parse(localStorage.getItem("pbipapp_barreras_registros") || "[]");
+  const filtro = (barreraFiltro && barreraFiltro.value.trim().toLowerCase()) || "";
+  // Encabezado
+  const thead = document.createElement("tr");
+  thead.className = "font-semibold border-b";
+  thead.innerHTML = `
+    <td class="p-2">N° Barrera</td>
+    <td class="p-2">N° Precinto</td>
+    <td class="p-2">N° Llave</td>
+    <td class="p-2">Observaciones</td>
+    <td class="p-2">Fecha/Hora</td>
+  `;
+  barrerasTable.appendChild(thead);
+  arr
+    .filter(r => {
+      if (!filtro) return true;
+      return (
+        (r.barreraNumero && String(r.barreraNumero).toLowerCase().includes(filtro)) ||
+        (r.barreraPrecinto && String(r.barreraPrecinto).toLowerCase().includes(filtro))
+      );
+    })
+    .forEach(r => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b";
+      tr.innerHTML = `
+        <td class="p-2">${r.barreraNumero || ""}</td>
+        <td class="p-2">${r.barreraPrecinto || ""}</td>
+        <td class="p-2">${r.barreraLlave || ""}</td>
+        <td class="p-2">${r.barreraObs || ""}</td>
+        <td class="p-2">${r.fechaHora || ""}</td>
+      `;
+      barrerasTable.appendChild(tr);
+    });
+}
+
+// Asignar evento al filtro
+if (barreraFiltro) {
+  barreraFiltro.addEventListener("input", renderBarrerasTable);
+}
   </script>
 </body>
 </html>
